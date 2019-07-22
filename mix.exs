@@ -23,13 +23,13 @@ defmodule Brook.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:elsa, "~> 0.7.0"},
       {:redix, "~> 0.10.2"},
       {:jason, "~> 1.1"},
       {:assertions, "~> 0.14.1", only: [:test, :integration]},
       {:divo, "~> 1.1", only: [:dev, :integration]},
       {:divo_kafka, "~> 0.1.5", only: [:integration]},
-      {:divo_redis, "~> 0.1.4", only: [:integration]}
+      {:divo_redis, "~> 0.1.4", only: [:integration]},
+      {:elsa, "~> 0.7.0", only: [:integration]},
     ]
   end
 

@@ -16,15 +16,6 @@ defmodule Brook.Server do
     {:ok, config, {:continue, :snapshot_init}}
   end
 
-  # def handle_continue(:elsa_init, state) do
-  #   elsa_config =
-  #     [name: :brook_elsa, handler: Brook.Elsa.Handler]
-  #     |> Keyword.merge(state.kafka_config)
-
-  #   {:ok, elsa} = Elsa.Group.Supervisor.start_link(elsa_config)
-  #   {:noreply, %{state | elsa: elsa}, {:continue, :snapshot_init}}
-  # end
-
   def handle_continue(:snapshot_init, %{snapshot: %{storage: storage} = snapshot_config} = state) do
     init_arg = Map.get(snapshot_config, :init_arg, [])
     interval = Map.get(snapshot_config, :interval, 60)
