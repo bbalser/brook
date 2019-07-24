@@ -25,4 +25,8 @@ defmodule BrookTest do
 
     assert nil == Brook.get(123)
   end
+
+  test "unhandle event" do
+    assert :discard == Test.Event.Handler.handle_event("DISCARD", :some_event)
+  end
 end
