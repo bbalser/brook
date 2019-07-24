@@ -24,7 +24,7 @@ defmodule Brook.Server do
     load_entries_from_snapshot(storage, storage_state)
     {:ok, ref} = :timer.send_interval(interval * 1_000, self(), :snapshot)
 
-    Logger.debug(fn -> "Brooke snapshot configured every #{interval} to #{inspect(storage)}" end)
+    Logger.debug(fn -> "Brook snapshot configured every #{interval} to #{inspect(storage)}" end)
     {:noreply, %{state | snapshot_state: storage_state, snapshot_timer: ref}}
   end
 
@@ -34,13 +34,12 @@ defmodule Brook.Server do
 
   def handle_call({:process, type, event}, _from, state) do
     decoded_event = apply(state.decoder, :decode, [event])
-    handlers = state.event_handlers[type]
 
-    Enum.each(handlers, fn handler ->
+    Enum.each(state.event_handlers, fn handler ->
       case apply(handler, :handle_event, [type, decoded_event]) do
         {:update, key, value} -> :ets.insert(__MODULE__, {key, value})
         {:delete, key} -> :ets.delete(__MODULE__, key)
-        {:discard} -> nil
+        :discard -> nil
       end
     end)
 

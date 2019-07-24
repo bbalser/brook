@@ -39,8 +39,8 @@ defmodule Brook.SnapshotTest do
     [brook: brook]
   end
 
-  test "entries are snapshotted at the interval configured", %{brook: brook} do
-    Brook.process(brook, :create, %{"id" => 123, "name" => "Gary"})
+  test "entries are snapshotted at the interval configured" do
+    Brook.process("CREATE", %{"id" => 123, "name" => "Gary"})
 
     entry = Brook.get(123)
 

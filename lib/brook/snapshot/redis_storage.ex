@@ -15,7 +15,7 @@ defmodule Brook.Snapshot.RedisStorage do
 
   def get_latest(state) do
     case Redix.command!(state.redix, ["KEYS", "#{state.namespace}:*"]) do
-      nil ->
+      [] ->
         []
 
       keys ->

@@ -9,11 +9,9 @@ defmodule Brook.Event.Handler do
   end
 
   defmacro __before_compile__(env) do
-    events = Module.get_attribute(env.module, :events)
-
     quote do
-      def events() do
-        unquote(events)
+      def handle_event(_type, _event) do
+        :discard
       end
     end
   end

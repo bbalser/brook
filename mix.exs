@@ -29,7 +29,7 @@ defmodule Brook.MixProject do
       {:divo, "~> 1.1", only: [:dev, :integration]},
       {:divo_kafka, "~> 0.1.5", only: [:integration]},
       {:divo_redis, "~> 0.1.4", only: [:integration]},
-      {:elsa, "~> 0.7.0", only: [:integration]},
+      {:elsa, "~> 0.7.0", only: [:test, :integration]}
     ]
   end
 

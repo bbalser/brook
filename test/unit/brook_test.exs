@@ -13,15 +13,15 @@ defmodule BrookTest do
     [brook: brook]
   end
 
-  test "update store", %{brook: brook} do
-    Brook.process(brook, :create, %{"id" => 123, "name" => "George"})
+  test "update store" do
+    Brook.process("CREATE", %{"id" => 123, "name" => "George"})
 
     assert %Test.Event.Data{id: 123, name: "George", started: false} == Brook.get(123)
   end
 
-  test "delete store", %{brook: brook} do
-    Brook.process(brook, :create, %{"id" => 123, "name" => "George"})
-    Brook.process(brook, :delete, %{"id" => 123})
+  test "delete store" do
+    Brook.process("CREATE", %{"id" => 123, "name" => "George"})
+    Brook.process("DELETE", %{"id" => 123})
 
     assert nil == Brook.get(123)
   end
