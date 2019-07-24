@@ -8,12 +8,21 @@ defmodule Brook.Supervisor do
   def init(opts) do
     config = Brook.Config.new(opts)
 
-    children = [
-      {Registry, [keys: :unique, name: Brook.Registry]},
-      {Brook.Server, config},
-      {config.generator, config.generator_config}
-    ]
+    children =
+      [
+        {Registry, [keys: :unique, name: Brook.Registry]},
+        snapshot(config.snapshot),
+        {Brook.Server, config},
+        {config.generator.module, config.generator.init_arg}
+      ]
+      |> List.flatten()
 
     Supervisor.init(children, strategy: :one_for_one)
+  end
+
+  defp snapshot(snapshot) when snapshot == %{}, do: []
+
+  defp snapshot(snapshot) do
+    {snapshot.module, snapshot.init_arg}
   end
 end

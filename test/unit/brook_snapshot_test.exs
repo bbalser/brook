@@ -4,25 +4,37 @@ defmodule Brook.SnapshotTest do
 
   defmodule TestSnapshot.Storage do
     @behaviour Brook.Snapshot.Storage
+    use GenServer
+
+    def start_link(args) do
+      GenServer.start_link(__MODULE__, args, name: via())
+    end
 
     def init(init_args) do
       {:ok, init_args}
     end
 
-    def get_latest(state) do
+    def get_latest() do
       %{"key1" => "value1"}
     end
 
-    def store(entries, state) do
-      Enum.each(entries, fn {key, value} -> send(state.pid, {:entry, key, value}) end)
+    def store(entries) do
+      GenServer.cast(via(), {:store, entries})
     end
+
+    def handle_cast({:store, entries}, state) do
+      Enum.each(entries, fn {key, value} -> send(state.pid, {:entry, key, value}) end)
+      {:noreply, state}
+    end
+
+    defp via(), do: {:via, Registry, {Brook.Registry, __MODULE__}}
   end
 
   setup do
     config = [
       handlers: [Test.Event.Handler],
       snapshot: %{
-        storage: TestSnapshot.Storage,
+        module: TestSnapshot.Storage,
         interval: 10,
         init_arg: %{pid: self()}
       }

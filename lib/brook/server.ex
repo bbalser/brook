@@ -16,16 +16,15 @@ defmodule Brook.Server do
     {:ok, config, {:continue, :snapshot_init}}
   end
 
-  def handle_continue(:snapshot_init, %{snapshot: %{storage: storage} = snapshot_config} = state) do
+  def handle_continue(:snapshot_init, %{snapshot: %{module: module} = snapshot_config} = state) do
     init_arg = Map.get(snapshot_config, :init_arg, [])
     interval = Map.get(snapshot_config, :interval, 60)
 
-    {:ok, storage_state} = apply(storage, :init, [init_arg])
-    load_entries_from_snapshot(storage, storage_state)
+    load_entries_from_snapshot(module)
     {:ok, ref} = :timer.send_interval(interval * 1_000, self(), :snapshot)
 
-    Logger.debug(fn -> "Brook snapshot configured every #{interval} to #{inspect(storage)}" end)
-    {:noreply, %{state | snapshot_state: storage_state, snapshot_timer: ref}}
+    Logger.debug(fn -> "Brook snapshot configured every #{interval} to #{inspect(module)}" end)
+    {:noreply, %{state | snapshot_timer: ref}}
   end
 
   def handle_continue(:snapshot_init, state) do
@@ -47,19 +46,19 @@ defmodule Brook.Server do
   end
 
   def handle_info(:snapshot, state) do
-    Logger.debug(fn -> "Snapshotting to event store #{inspect(state.snapshot.storage)}" end)
+    Logger.debug(fn -> "Snapshotting to event store #{inspect(state.snapshot.module)}" end)
 
     entries =
       :ets.match_object(__MODULE__, :_)
       |> Enum.into(%{})
 
-    apply(state.snapshot.storage, :store, [entries, state.snapshot_state])
+    apply(state.snapshot.module, :store, [entries])
 
     {:noreply, state}
   end
 
-  defp load_entries_from_snapshot(storage, state) do
-    apply(storage, :get_latest, [state])
+  defp load_entries_from_snapshot(module) do
+    apply(module, :get_latest, [])
     |> Enum.each(fn {key, value} ->
       :ets.insert(__MODULE__, {key, value})
     end)

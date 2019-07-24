@@ -5,7 +5,7 @@ defmodule Brook.MixProject do
     [
       app: :brook,
       version: "0.1.0",
-      elixir: "~> 1.9",
+      elixir: "~> 1.8",
       elixirc_paths: elixirc_paths(Mix.env()),
       test_paths: test_paths(Mix.env()),
       start_permanent: Mix.env() == :prod,
@@ -25,11 +25,11 @@ defmodule Brook.MixProject do
     [
       {:redix, "~> 0.10.2"},
       {:jason, "~> 1.1"},
+      {:elsa, "~> 0.7.0"},
       {:assertions, "~> 0.14.1", only: [:test, :integration]},
       {:divo, "~> 1.1", only: [:dev, :integration]},
       {:divo_kafka, "~> 0.1.5", only: [:integration]},
-      {:divo_redis, "~> 0.1.4", only: [:integration]},
-      {:elsa, "~> 0.7.0", only: [:test, :integration]}
+      {:divo_redis, "~> 0.1.4", only: [:integration]}
     ]
   end
 
