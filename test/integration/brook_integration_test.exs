@@ -15,7 +15,7 @@ defmodule Brook.IntegrationTest do
 
   test "brook happy path", %{redix: redix} do
     config = [
-      generator: %{
+      driver: %{
         module: Elsa.Group.Supervisor,
         init_arg: [
           name: :brook_elsa,

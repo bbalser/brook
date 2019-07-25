@@ -13,7 +13,7 @@ defmodule Brook.Supervisor do
         {Registry, [keys: :unique, name: Brook.Registry]},
         snapshot(config.snapshot),
         {Brook.Server, config},
-        {config.generator.module, config.generator.init_arg}
+        {config.driver.module, config.driver.init_arg}
       ]
       |> List.flatten()
 

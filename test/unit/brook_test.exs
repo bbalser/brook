@@ -2,7 +2,7 @@ defmodule BrookTest do
   use ExUnit.Case
 
   setup do
-    {:ok, brook} = Brook.start_link(endpoints: [localhost: 9094], handlers: [Test.Event.Handler])
+    {:ok, brook} = Brook.start_link(handlers: [Test.Event.Handler])
 
     on_exit(fn ->
       ref = Process.monitor(brook)

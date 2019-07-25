@@ -1,11 +1,11 @@
 defmodule Brook.Config do
   @default_decoder Brook.Decoder.Noop
-  @default_generator %{module: Brook.Generator.Default, init_arg: []}
+  @default_driver %{module: Brook.Driver.Default, init_arg: []}
 
   defstruct [
     :elsa,
     :kafka_config,
-    :generator,
+    :driver,
     :decoder,
     :event_handlers,
     :snapshot,
@@ -14,7 +14,7 @@ defmodule Brook.Config do
 
   def new(opts) do
     %__MODULE__{
-      generator: Keyword.get(opts, :generator, @default_generator),
+      driver: Keyword.get(opts, :driver, @default_driver),
       decoder: Keyword.get(opts, :decoder, @default_decoder),
       event_handlers: Keyword.fetch!(opts, :handlers),
       snapshot: Keyword.get(opts, :snapshot, %{})
