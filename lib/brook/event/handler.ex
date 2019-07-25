@@ -1,5 +1,5 @@
 defmodule Brook.Event.Handler do
-  @callback handle_event(atom(), any()) :: {:update, any(), any()}
+  @callback handle_event(Brook.Event.t()) :: {:update, any(), any()} | {:delete, any()} | :discard
 
   defmacro __using__(_opts) do
     quote do
@@ -8,9 +8,9 @@ defmodule Brook.Event.Handler do
     end
   end
 
-  defmacro __before_compile__(env) do
+  defmacro __before_compile__(_env) do
     quote do
-      def handle_event(_type, _event) do
+      def handle_event(%Brook.Event{} = _event) do
         :discard
       end
     end

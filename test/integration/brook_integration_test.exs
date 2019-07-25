@@ -16,13 +16,11 @@ defmodule Brook.IntegrationTest do
   test "brook happy path", %{redix: redix} do
     config = [
       driver: %{
-        module: Elsa.Group.Supervisor,
+        module: Brook.Driver.Kafka,
         init_arg: [
-          name: :brook_elsa,
           endpoints: [localhost: 9092],
-          topics: ["test"],
+          topic: "test",
           group: "test-group",
-          handler: Test.Elsa.Handler,
           config: [
             begin_offset: :earliest
           ]

@@ -17,7 +17,7 @@ defmodule Brook.Snapshot.Redis do
     GenServer.call(via(), :get_latest)
   end
 
-  @spec start_link(config()) :: GenServer.on_start()
+  @impl Brook.Snapshot
   def start_link(args) do
     GenServer.start_link(__MODULE__, args, name: via())
   end

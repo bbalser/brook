@@ -14,19 +14,23 @@ defmodule BrookTest do
   end
 
   test "update store" do
-    Brook.process("CREATE", %{"id" => 123, "name" => "George"})
+    Brook.process(event("CREATE", %{"id" => 123, "name" => "George"}))
 
     assert %Test.Event.Data{id: 123, name: "George", started: false} == Brook.get(123)
   end
 
   test "delete store" do
-    Brook.process("CREATE", %{"id" => 123, "name" => "George"})
-    Brook.process("DELETE", %{"id" => 123})
+    Brook.process(event("CREATE", %{"id" => 123, "name" => "George"}))
+    Brook.process(event("DELETE", %{"id" => 123}))
 
     assert nil == Brook.get(123)
   end
 
   test "unhandle event" do
-    assert :discard == Test.Event.Handler.handle_event("DISCARD", :some_event)
+    assert :discard == Test.Event.Handler.handle_event(event("DISCARD", :some_event))
+  end
+
+  defp event(type, data) do
+    %Brook.Event{type: type, data: data}
   end
 end

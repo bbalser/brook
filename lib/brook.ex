@@ -13,12 +13,13 @@ defmodule Brook do
 
   @spec send_event(event_type(), event()) :: :ok | {:error, reason()}
   def send_event(type, event) do
-    nil
+    GenServer.call({:via, Registry, {Brook.Registry, Brook.Server}}, {:send, type, event})
+    :ok
   end
 
-  @spec process(event_type(), event()) :: :ok | {:error, reason()}
-  def process(type, event) do
-    GenServer.call({:via, Registry, {Brook.Registry, Brook.Server}}, {:process, type, event})
+  @spec process(Brook.Event.t()) :: :ok | {:error, reason()}
+  def process(%Brook.Event{} = event) do
+    GenServer.call({:via, Registry, {Brook.Registry, Brook.Server}}, {:process, event})
   end
 
   @spec get(view_key()) :: view_body()

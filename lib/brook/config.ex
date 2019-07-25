@@ -2,15 +2,14 @@ defmodule Brook.Config do
   @default_decoder Brook.Decoder.Noop
   @default_driver %{module: Brook.Driver.Default, init_arg: []}
 
-  defstruct [
-    :elsa,
-    :kafka_config,
-    :driver,
-    :decoder,
-    :event_handlers,
-    :snapshot,
-    :snapshot_timer
-  ]
+  defstruct elsa: nil,
+            kafka_config: nil,
+            driver: nil,
+            decoder: nil,
+            event_handlers: nil,
+            snapshot: nil,
+            snapshot_timer: nil,
+            unacked: []
 
   def new(opts) do
     %__MODULE__{
