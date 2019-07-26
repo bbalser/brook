@@ -11,7 +11,7 @@ defmodule Brook.Driver.Kafka.Handler do
   def event(%{key: type, value: data} = message) do
     %Brook.Event{
       type: type,
-      data: data,
+      data: Jason.decode!(data),
       ack_ref: ack_ref(message),
       ack_data: ack_data(message)
     }

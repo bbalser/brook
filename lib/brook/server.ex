@@ -37,10 +37,8 @@ defmodule Brook.Server do
   end
 
   def handle_call({:process, %Brook.Event{} = event}, _from, state) do
-    new_event = Brook.Event.update_data(event, fn data -> apply(state.decoder, :decode, [data]) end)
-
     Enum.each(state.event_handlers, fn handler ->
-      case apply(handler, :handle_event, [new_event]) do
+      case apply(handler, :handle_event, [event]) do
         {:update, key, value} -> insert(state, key, value)
         {:delete, key} -> delete(state, key)
         :discard -> nil

@@ -26,7 +26,6 @@ defmodule Brook.IntegrationTest do
           ]
         ]
       },
-      decoder: Brook.Decoder.Json,
       handlers: [Test.Event.Handler],
       snapshot: %{
         module: Brook.Snapshot.Redis,
