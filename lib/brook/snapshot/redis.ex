@@ -1,5 +1,6 @@
 defmodule Brook.Snapshot.Redis do
   use GenServer
+  require Logger
   @behaviour Brook.Snapshot
 
   @type config :: [
@@ -8,8 +9,13 @@ defmodule Brook.Snapshot.Redis do
         ]
 
   @impl Brook.Snapshot
-  def store(entries) do
-    GenServer.call(via(), {:store, entries})
+  def persist(records) do
+    GenServer.call(via(), {:persist, records})
+  end
+
+  @impl Brook.Snapshot
+  def delete(keys) do
+    GenServer.call(via(), {:delete, keys})
   end
 
   @impl Brook.Snapshot
@@ -37,19 +43,41 @@ defmodule Brook.Snapshot.Redis do
   end
 
   @impl GenServer
-  def handle_call({:store, entries}, _from, state) do
-    entries
-    |> Enum.map(fn {key, value} -> {key, %{key: key, value: value}} end)
-    |> Enum.each(fn {key, value} ->
-      Redix.command!(state.redix, ["SET", "#{state.namespace}:#{key}", :erlang.term_to_binary(value)])
-    end)
+  def handle_call({:persist, []}, _from, state), do: reply(:ok, state)
+
+  @impl GenServer
+  def handle_call({:persist, records}, _from, state) do
+    Logger.debug(fn -> "#{__MODULE__}: persisting #{length(records)} to redis" end)
+
+    redix_values =
+      records
+      |> Enum.map(fn {key, value} -> {key(state, key), %{key: key, value: value}} end)
+      |> Enum.flat_map(fn {key, value} -> [key, :erlang.term_to_binary(value)] end)
+
+    Redix.command!(state.redix, ["MSET" | redix_values])
+
+    reply(:ok, state)
+  end
+
+  @impl GenServer
+  def handle_call({:delete, []}, _from, state), do: reply(:ok, state)
+
+  @impl GenServer
+  def handle_call({:delete, keys}, _from, state) do
+    Logger.debug(fn -> "#{__MODULE__}: deleting #{length(keys)} from redis" end)
+
+    redix_keys =
+      keys
+      |> Enum.map(fn key -> key(state, key) end)
+
+    Redix.command!(state.redix, ["DEL" | redix_keys])
 
     reply(:ok, state)
   end
 
   @impl GenServer
   def handle_call(:get_latest, _from, state) do
-    case Redix.command!(state.redix, ["KEYS", "#{state.namespace}:*"]) do
+    case Redix.command!(state.redix, ["KEYS", key(state, "*")]) do
       [] ->
         []
 
@@ -62,6 +90,7 @@ defmodule Brook.Snapshot.Redis do
     |> reply(state)
   end
 
+  defp key(state, key), do: "#{state.namespace}:#{key}"
   defp via(), do: {:via, Registry, {Brook.Registry, __MODULE__}}
   defp reply(reply_value, state), do: {:reply, reply_value, state}
 end

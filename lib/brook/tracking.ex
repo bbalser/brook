@@ -15,7 +15,7 @@ defmodule Brook.Tracking do
     case config.snapshot do
       %{module: _module} ->
         :ets.match_object(__MODULE__, :_)
-        |> Enum.map(fn {key, action} -> %{key: key, action: action} end)
+        |> Enum.group_by(fn {_key, action} -> action end, fn {key, _action} -> key end)
 
       _ ->
         []

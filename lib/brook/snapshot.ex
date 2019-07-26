@@ -3,7 +3,9 @@ defmodule Brook.Snapshot do
 
   @callback child_spec(term()) :: Supervisor.child_spec()
 
-  @callback store(term()) :: :ok | {:error, Brook.reason()}
+  @callback persist(list({term(), term()})) :: :ok | {:error, Brook.reason()}
 
-  @callback get_latest() :: any()
+  @callback delete(list()) :: :ok | {:error, Brook.reason()}
+
+  @callback get_latest() :: term()
 end

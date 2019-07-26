@@ -23,10 +23,5 @@ defmodule Brook do
   end
 
   @spec get(view_key()) :: view_body()
-  def get(key) do
-    case :ets.lookup(Brook.Server, key) do
-      [{^key, value}] -> value
-      [] -> nil
-    end
-  end
+  defdelegate get(key), to: Brook.Server
 end

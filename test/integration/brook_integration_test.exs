@@ -49,11 +49,13 @@ defmodule Brook.IntegrationTest do
       assert 123 == stored_snapshot.key
       assert %Test.Event.Data{id: 123, name: "George", started: false} == stored_snapshot.value
     end
+
+    kill_and_wait(brook, 10_000)
   end
 
-  defp kill_and_wait(pid) do
+  defp kill_and_wait(pid, timeout \\ 1_000) do
     ref = Process.monitor(pid)
     Process.exit(pid, :normal)
-    assert_receive {:DOWN, ^ref, _, _, _}
+    assert_receive {:DOWN, ^ref, _, _, _}, timeout
   end
 end

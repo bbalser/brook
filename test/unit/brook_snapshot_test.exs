@@ -18,6 +18,10 @@ defmodule Brook.SnapshotTest do
       GenServer.cast(via(), {:ack, ack_ref, ack_data})
     end
 
+    def send_event(_type, _event) do
+      nil
+    end
+
     def handle_cast({:ack, ack_ref, ack_data}, state) do
       send(state.pid, {:ack, ack_ref, ack_data})
       {:noreply, state}
@@ -27,7 +31,7 @@ defmodule Brook.SnapshotTest do
   end
 
   defmodule TestSnapshot.Storage do
-    @behaviour Brook.Snapshot.Storage
+    @behaviour Brook.Snapshot
     use GenServer
 
     def start_link(args) do
@@ -42,12 +46,21 @@ defmodule Brook.SnapshotTest do
       %{"key1" => "value1"}
     end
 
-    def store(entries) do
-      GenServer.cast(via(), {:store, entries})
+    def persist(entries) do
+      GenServer.cast(via(), {:persist, entries})
     end
 
-    def handle_cast({:store, entries}, state) do
-      Enum.each(entries, fn {key, value} -> send(state.pid, {:entry, key, value}) end)
+    def delete(keys) do
+      GenServer.cast(via(), {:delete, keys})
+    end
+
+    def handle_cast({:persist, entries}, state) do
+      Enum.each(entries, fn {key, value} -> send(state.pid, {:persist, key, value}) end)
+      {:noreply, state}
+    end
+
+    def handle_cast({:delete, keys}, state) do
+      Enum.each(keys, fn key -> send(state.pid, {:delete, key}) end)
       {:noreply, state}
     end
 
@@ -63,7 +76,7 @@ defmodule Brook.SnapshotTest do
       handlers: [Test.Event.Handler],
       snapshot: %{
         module: TestSnapshot.Storage,
-        interval: 10,
+        interval: 2,
         init_arg: %{pid: self()}
       }
     ]
@@ -84,7 +97,13 @@ defmodule Brook.SnapshotTest do
 
     entry = Brook.get(123)
 
-    assert_receive {:entry, 123, ^entry}, 15_000
+    assert_receive {:persist, 123, ^entry}, 3_000
+
+    Brook.process(%Brook.Event{type: "DELETE", data: %{"id" => 123, "name" => "Gary"}})
+
+    nil = Brook.get(123)
+
+    assert_receive {:delete, 123}, 3_000
   end
 
   test "entries are retrieved from latest snapshot on init" do
@@ -103,7 +122,7 @@ defmodule Brook.SnapshotTest do
 
     Enum.each(messages, fn msg -> Brook.process(msg) end)
 
-    assert_receive {:ack, "A", ["Bobby", "Brian"]}, 15_000
+    assert_receive {:ack, "A", ["Bobby", "Brian"]}, 3_000
     assert_receive {:ack, "B", ["Scott"]}, 1_000
     assert_receive {:ack, "C", ["Frank"]}, 1_000
   end

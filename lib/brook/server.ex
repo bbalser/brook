@@ -4,8 +4,11 @@ defmodule Brook.Server do
 
   alias Brook.Tracking
 
-  defmodule State do
-    defstruct [:elsa, :kafka_config, :decoder, :event_handlers, :snapshot, :snapshot_state, :snapshot_timer]
+  def get(key) do
+    case :ets.lookup(__MODULE__, key) do
+      [{^key, value}] -> value
+      [] -> nil
+    end
   end
 
   def start_link(%Brook.Config{} = config) do
@@ -25,7 +28,7 @@ defmodule Brook.Server do
     load_entries_from_snapshot(module)
     {:ok, ref} = :timer.send_interval(interval * 1_000, self(), :snapshot)
 
-    Logger.debug(fn -> "Brook snapshot configured every #{interval} to #{inspect(module)}" end)
+    Logger.info(fn -> "Brook snapshot configured every #{interval} to #{inspect(module)}" end)
     {:noreply, %{state | snapshot_timer: ref}}
   end
 
@@ -53,23 +56,40 @@ defmodule Brook.Server do
   end
 
   def handle_info(:snapshot, state) do
-    Logger.debug(fn -> "Snapshotting to event store #{inspect(state.snapshot.module)}" end)
+    Logger.info(fn -> "Snapshotting to event store #{inspect(state.snapshot.module)}" end)
 
-    entries =
-      :ets.match_object(__MODULE__, :_)
-      |> Enum.into(%{})
+    actions = Tracking.get_actions(state)
+    persist_records_in_snapshot(state, actions)
+    delete_records_in_snapshot(state, actions)
+    Tracking.clear(state)
 
-    :ok = apply(state.snapshot.module, :store, [entries])
+    ack_events(state)
 
+    {:noreply, state}
+  end
+
+  defp ack_events(state) do
     state.unacked
     |> Enum.reverse()
     |> Enum.group_by(fn {ack_ref, _ack_data} -> ack_ref end, fn {_ack_ref, ack_data} -> ack_data end)
     |> Enum.each(fn {ack_ref, ack_datas} ->
       apply(state.driver.module, :ack, [ack_ref, ack_datas])
     end)
-
-    {:noreply, state}
   end
+
+  defp persist_records_in_snapshot(state, %{insert: keys}) do
+    insertions = Enum.map(keys, fn key -> {key, get(key)} end)
+
+    :ok = apply(state.snapshot.module, :persist, [insertions])
+  end
+
+  defp persist_records_in_snapshot(_state, _actions), do: :ok
+
+  defp delete_records_in_snapshot(state, %{delete: keys}) do
+    :ok = apply(state.snapshot.module, :delete, [keys])
+  end
+
+  defp delete_records_in_snapshot(_state, _actions), do: :ok
 
   defp insert(config, key, value) do
     :ets.insert(__MODULE__, {key, value})
