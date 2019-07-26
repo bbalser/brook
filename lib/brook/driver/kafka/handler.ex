@@ -5,7 +5,7 @@ defmodule Brook.Driver.Kafka.Handler do
     messages
     |> Enum.each(fn message -> Brook.process(event(message)) end)
 
-    :continue
+    :ack
   end
 
   def event(%{key: type, value: data} = message) do

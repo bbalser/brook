@@ -39,14 +39,14 @@ defmodule Brook.IntegrationTest do
     Elsa.produce([localhost: 9092], "test", {"CREATE", Jason.encode!(%{"id" => 123, "name" => "George"})}, partition: 0)
 
     assert_async(timeout: 15_000, sleep_time: 1_000) do
-      assert %Test.Event.Data{id: 123, name: "George", started: false} == Brook.get(123)
+      assert %{"id" => 123, "name" => "George"} == Brook.get(123)
       stored_snapshot = Redix.command!(redix, ["GET", "test:snapshot:123"])
 
       assert stored_snapshot != nil
       stored_snapshot = :erlang.binary_to_term(stored_snapshot)
 
       assert 123 == stored_snapshot.key
-      assert %Test.Event.Data{id: 123, name: "George", started: false} == stored_snapshot.value
+      assert %{"id" => 123, "name" => "George"} == stored_snapshot.value
     end
 
     kill_and_wait(brook, 10_000)

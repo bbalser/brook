@@ -46,6 +46,8 @@ defmodule Brook.Server do
       end
     end)
 
+    Tracking.add_event(state, event)
+
     {:reply, :ok, %{state | unacked: [{event.ack_ref, event.ack_data} | state.unacked]}}
   end
 
@@ -60,20 +62,11 @@ defmodule Brook.Server do
     actions = Tracking.get_actions(state)
     persist_records_in_snapshot(state, actions)
     delete_records_in_snapshot(state, actions)
+
+    Tracking.ack_events(state)
+
     Tracking.clear(state)
-
-    ack_events(state)
-
     {:noreply, state}
-  end
-
-  defp ack_events(state) do
-    state.unacked
-    |> Enum.reverse()
-    |> Enum.group_by(fn {ack_ref, _ack_data} -> ack_ref end, fn {_ack_ref, ack_data} -> ack_data end)
-    |> Enum.each(fn {ack_ref, ack_datas} ->
-      apply(state.driver.module, :ack, [ack_ref, ack_datas])
-    end)
   end
 
   defp persist_records_in_snapshot(state, %{insert: keys}) do
