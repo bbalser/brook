@@ -10,7 +10,7 @@ defmodule Brook.Config do
   def new(opts) do
     %__MODULE__{
       driver: Keyword.get(opts, :driver, @default_driver),
-      event_handlers: Keyword.fetch!(opts, :handlers),
+      event_handlers: Keyword.get(opts, :handlers, []),
       snapshot: Keyword.get(opts, :snapshot, %{})
     }
   end

@@ -7,6 +7,10 @@ defmodule Brook do
 
   @type reason :: term()
 
+  defmodule UnsupportedMerge do
+    defexception [:message]
+  end
+
   defdelegate start_link(opts), to: Brook.Supervisor
 
   defdelegate child_spec(args), to: Brook.Supervisor

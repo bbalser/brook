@@ -39,7 +39,8 @@ defmodule Brook.Server do
   def handle_call({:process, %Brook.Event{} = event}, _from, state) do
     Enum.each(state.event_handlers, fn handler ->
       case apply(handler, :handle_event, [event]) do
-        {:update, key, value} -> insert(state, key, value)
+        {:create, key, value} -> insert(state, key, value)
+        {:merge, key, value} -> merge(state, key, value)
         {:delete, key} -> delete(state, key)
         :discard -> nil
       end
@@ -92,6 +93,24 @@ defmodule Brook.Server do
   defp insert(config, key, value) do
     :ets.insert(__MODULE__, {key, value})
     Tracking.record_action(config, key, :insert)
+  end
+
+  defp merge(config, key, %{} = value) do
+    case get(key) do
+      nil -> insert(config, key, value)
+      existing_value -> insert(config, key, Map.merge(existing_value, value))
+    end
+  end
+
+  defp merge(config, key, value) when is_list(value) do
+    case get(key) do
+      nil -> insert(config, key, value)
+      existing_value -> insert(config, key, Keyword.merge(existing_value, value))
+    end
+  end
+
+  defp merge(config, key, function) when is_function(function, 1) do
+    insert(config, key, function.(get(key)))
   end
 
   defp delete(config, key) do
