@@ -28,4 +28,7 @@ defmodule Brook do
 
   @spec get(view_key()) :: view_body()
   defdelegate get(key), to: Brook.Server
+
+  @spec get_events(view_key()) :: list(Brook.Event.t())
+  defdelegate get_events(key), to: Brook.Server
 end

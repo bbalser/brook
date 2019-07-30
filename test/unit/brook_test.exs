@@ -2,7 +2,14 @@ defmodule BrookTest do
   use ExUnit.Case
 
   setup do
-    {:ok, brook} = Brook.start_link(handlers: [Test.Event.Handler])
+    {:ok, brook} =
+      Brook.start_link(
+        handlers: [Test.Event.Handler],
+        storage: [
+          module: Brook.Test.Storage.Ets,
+          init_arg: []
+        ]
+      )
 
     on_exit(fn ->
       ref = Process.monitor(brook)
@@ -14,7 +21,7 @@ defmodule BrookTest do
   end
 
   test "creat entry in store" do
-    Brook.process(event("CREATE", %{"id" => 123, "name" => "George"}))
+    :ok = Brook.process(event("CREATE", %{"id" => 123, "name" => "George"}))
 
     assert %{"id" => 123, "name" => "George"} == Brook.get(123)
   end

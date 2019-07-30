@@ -5,50 +5,69 @@ defmodule Brook.Server do
   alias Brook.Tracking
 
   def get(key) do
-    case :ets.lookup(__MODULE__, key) do
-      [{^key, value}] -> value
-      [] -> nil
-    end
+    GenServer.call(via(), {:get, key})
+  end
+
+  def get_events(key) do
+    GenServer.call(via(), {:get_events, key})
   end
 
   def start_link(%Brook.Config{} = config) do
-    GenServer.start_link(__MODULE__, config, name: {:via, Registry, {Brook.Registry, __MODULE__}})
+    GenServer.start_link(__MODULE__, config, name: via())
   end
 
   def init(%Brook.Config{} = config) do
-    :ets.new(__MODULE__, [:named_table, :set, :protected])
-    Tracking.create_table(config)
-
-    {:ok, config, {:continue, :snapshot_init}}
+    {:ok, config}
   end
 
-  def handle_continue(:snapshot_init, %{snapshot: %{module: module} = snapshot_config} = state) do
-    interval = Map.get(snapshot_config, :interval, 60)
-
-    load_entries_from_snapshot(module)
-    {:ok, ref} = :timer.send_interval(interval * 1_000, self(), :snapshot)
-
-    Logger.info(fn -> "Brook snapshot configured every #{interval} to #{inspect(module)}" end)
-    {:noreply, %{state | snapshot_timer: ref}}
+  def handle_call({:get, key}, _from, state) do
+    value = apply(state.storage.module, :get, [key])
+    {:reply, value, state}
   end
 
-  def handle_continue(:snapshot_init, state) do
-    {:noreply, state}
+  def handle_call({:get_events, key}, _from, state) do
+    events = apply(state.storage.module, :get_events, [key])
+    {:reply, events, state}
   end
 
   def handle_call({:process, %Brook.Event{} = event}, _from, state) do
     Enum.each(state.event_handlers, fn handler ->
       case apply(handler, :handle_event, [event]) do
-        {:create, key, value} -> insert(state, key, value)
-        {:merge, key, value} -> merge(state, key, value)
-        {:delete, key} -> delete(state, key)
-        :discard -> nil
+        {:create, key, value} ->
+          apply(state.storage.module, :persist, [event, key, value])
+
+        {:merge, key, value} ->
+          merged_value = merge(key, value, state)
+          apply(state.storage.module, :persist, [event, key, merged_value])
+
+        {:delete, key} ->
+          apply(state.storage.module, :delete, [key])
+
+        :discard ->
+          nil
       end
     end)
 
-    Tracking.add_event(state, event)
+    {:reply, :ok, state}
+  end
 
-    {:reply, :ok, %{state | unacked: [{event.ack_ref, event.ack_data} | state.unacked]}}
+  defp merge(key, %{} = value, state) do
+    do_merge(key, value, &Map.merge(&1, value), state)
+  end
+
+  defp merge(key, value, state) when is_list(value) do
+    do_merge(key, value, &Keyword.merge(&1, value), state)
+  end
+
+  defp merge(key, function, state) when is_function(function) do
+    do_merge(key, nil, function, state)
+  end
+
+  defp do_merge(key, default, function, state) when is_function(function, 1) do
+    case apply(state.storage.module, :get, [key]) do
+      nil -> default
+      old_value -> function.(old_value)
+    end
   end
 
   def handle_call({:send, type, event}, _from, state) do
@@ -56,65 +75,5 @@ defmodule Brook.Server do
     {:reply, :ok, state}
   end
 
-  def handle_info(:snapshot, state) do
-    Logger.info(fn -> "Snapshotting to event store #{inspect(state.snapshot.module)}" end)
-
-    actions = Tracking.get_actions(state)
-    persist_records_in_snapshot(state, actions)
-    delete_records_in_snapshot(state, actions)
-
-    Tracking.ack_events(state)
-
-    Tracking.clear(state)
-    {:noreply, state}
-  end
-
-  defp persist_records_in_snapshot(state, %{insert: keys}) do
-    insertions = Enum.map(keys, fn key -> {key, get(key)} end)
-
-    :ok = apply(state.snapshot.module, :persist, [insertions])
-  end
-
-  defp persist_records_in_snapshot(_state, _actions), do: :ok
-
-  defp delete_records_in_snapshot(state, %{delete: keys}) do
-    :ok = apply(state.snapshot.module, :delete, [keys])
-  end
-
-  defp delete_records_in_snapshot(_state, _actions), do: :ok
-
-  defp insert(config, key, value) do
-    :ets.insert(__MODULE__, {key, value})
-    Tracking.record_action(config, key, :insert)
-  end
-
-  defp merge(config, key, %{} = value) do
-    case get(key) do
-      nil -> insert(config, key, value)
-      existing_value -> insert(config, key, Map.merge(existing_value, value))
-    end
-  end
-
-  defp merge(config, key, value) when is_list(value) do
-    case get(key) do
-      nil -> insert(config, key, value)
-      existing_value -> insert(config, key, Keyword.merge(existing_value, value))
-    end
-  end
-
-  defp merge(config, key, function) when is_function(function, 1) do
-    insert(config, key, function.(get(key)))
-  end
-
-  defp delete(config, key) do
-    :ets.delete(__MODULE__, key)
-    Tracking.record_action(config, key, :delete)
-  end
-
-  defp load_entries_from_snapshot(module) do
-    apply(module, :get_latest, [])
-    |> Enum.each(fn {key, value} ->
-      :ets.insert(__MODULE__, {key, value})
-    end)
-  end
+  defp via(), do: {:via, Registry, {Brook.Registry, __MODULE__}}
 end

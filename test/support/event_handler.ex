@@ -34,3 +34,8 @@ defmodule Test.Event.Handler do
     Keyword.get(data, :id)
   end
 end
+
+defmodule Test.Watch.Handlers do
+  def handle_watch(key, value) do
+  end
+end

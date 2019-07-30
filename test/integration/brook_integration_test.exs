@@ -6,14 +6,6 @@ defmodule Brook.IntegrationTest do
   setup do
     {:ok, redix} = Redix.start_link(host: "localhost")
 
-    on_exit(fn ->
-      kill_and_wait(redix)
-    end)
-
-    [redix: redix]
-  end
-
-  test "brook happy path", %{redix: redix} do
     config = [
       driver: %{
         module: Brook.Driver.Kafka,
@@ -27,29 +19,48 @@ defmodule Brook.IntegrationTest do
         ]
       },
       handlers: [Test.Event.Handler],
-      snapshot: %{
-        module: Brook.Snapshot.Redis,
-        interval: 10,
+      storage: %{
+        module: Brook.Storage.Redis,
         init_arg: [redix_args: [host: "localhost"], namespace: "test:snapshot"]
       }
     ]
 
     {:ok, brook} = Brook.start_link(config)
 
+    on_exit(fn ->
+      kill_and_wait(redix)
+      kill_and_wait(brook, 10_000)
+    end)
+
+    [redix: redix]
+  end
+
+  test "brook happy path" do
     Elsa.produce([localhost: 9092], "test", {"CREATE", Jason.encode!(%{"id" => 123, "name" => "George"})}, partition: 0)
+    Elsa.produce([localhost: 9092], "test", {"UPDATE", Jason.encode!(%{"id" => 123, "age" => 67})})
 
-    assert_async(timeout: 15_000, sleep_time: 1_000) do
-      assert %{"id" => 123, "name" => "George"} == Brook.get(123)
-      stored_snapshot = Redix.command!(redix, ["GET", "test:snapshot:123"])
-
-      assert stored_snapshot != nil
-      stored_snapshot = :erlang.binary_to_term(stored_snapshot)
-
-      assert 123 == stored_snapshot.key
-      assert %{"id" => 123, "name" => "George"} == stored_snapshot.value
+    assert_async(timeout: 2_000, sleep_time: 200) do
+      assert %{"id" => 123, "name" => "George", "age" => 67} == Brook.get(123)
     end
 
-    kill_and_wait(brook, 10_000)
+    assert_async(timeout: 2_000, sleep_time: 200) do
+      events = Brook.get_events(123)
+      assert 2 == length(events)
+
+      create_event = List.first(events)
+      assert "CREATE" == create_event.type
+      assert %{"id" => 123, "name" => "George"} == create_event.data
+
+      update_event = Enum.at(events, 1)
+      assert "UPDATE" == update_event.type
+      assert %{"id" => 123, "age" => 67} == update_event.data
+    end
+
+    Elsa.produce([localhost: 9092], "test", {"DELETE", Jason.encode!(%{"id" => 123})})
+
+    assert_async(timeout: 2_000, sleep_time: 200) do
+      assert nil == Brook.get(123)
+    end
   end
 
   defp kill_and_wait(pid, timeout \\ 1_000) do

@@ -11,18 +11,12 @@ defmodule Brook.Supervisor do
     children =
       [
         {Registry, [keys: :unique, name: Brook.Registry]},
-        snapshot(config.snapshot),
+        {config.storage.module, config.storage.init_arg},
         {Brook.Server, config},
         {config.driver.module, config.driver.init_arg}
       ]
       |> List.flatten()
 
     Supervisor.init(children, strategy: :one_for_one)
-  end
-
-  defp snapshot(snapshot) when snapshot == %{}, do: []
-
-  defp snapshot(snapshot) do
-    {snapshot.module, snapshot.init_arg}
   end
 end
