@@ -2,8 +2,6 @@ defmodule Brook.Server do
   use GenServer
   require Logger
 
-  alias Brook.Tracking
-
   def get(key) do
     GenServer.call(via(), {:get, key})
   end

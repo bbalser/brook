@@ -28,14 +28,13 @@ defmodule Test.Event.Handler do
     {:merge, :list, data}
   end
 
+  def handle_event(%Brook.Event{type: "UPDATE_APP_STATE", data: data}) do
+    {:merge, :app_state, data}
+  end
+
   defp get_id(%{} = data), do: data["id"]
 
   defp get_id(data) when is_list(data) do
     Keyword.get(data, :id)
-  end
-end
-
-defmodule Test.Watch.Handlers do
-  def handle_watch(key, value) do
   end
 end

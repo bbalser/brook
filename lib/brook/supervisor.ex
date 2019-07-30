@@ -13,7 +13,8 @@ defmodule Brook.Supervisor do
         {Registry, [keys: :unique, name: Brook.Registry]},
         {config.storage.module, config.storage.init_arg},
         {Brook.Server, config},
-        {config.driver.module, config.driver.init_arg}
+        {config.driver.module, config.driver.init_arg},
+        {Brook.Watcher, config}
       ]
       |> List.flatten()
 

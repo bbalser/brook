@@ -1,16 +1,13 @@
 defmodule Brook.Storage do
-  @type key :: String.Chars.t()
-  @type value :: term()
-
   @callback start_link(term()) :: GenServer.on_start()
 
   @callback child_spec(term()) :: Supervisor.child_spec()
 
-  @callback persist(Brook.Event.t(), key(), value()) :: :ok | {:error, Brook.reason()}
+  @callback persist(Brook.Event.t(), Brook.view_key(), Brook.view_body()) :: :ok | {:error, Brook.reason()}
 
-  @callback delete(key()) :: :ok | {:error, Brook.reason()}
+  @callback delete(Brook.view_key()) :: :ok | {:error, Brook.reason()}
 
-  @callback get(key()) :: value()
+  @callback get(Brook.view_key()) :: Brook.view_body()
 
-  @callback get_events(key()) :: list(Brook.Event.t())
+  @callback get_events(Brook.view_key()) :: list(Brook.Event.t())
 end
