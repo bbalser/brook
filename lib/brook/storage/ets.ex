@@ -1,4 +1,4 @@
-defmodule Brook.Test.Storage.Ets do
+defmodule Brook.Storage.Ets do
   use GenServer
   require Logger
 
