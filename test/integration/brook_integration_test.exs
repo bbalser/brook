@@ -19,6 +19,12 @@ defmodule Brook.IntegrationTest do
         ]
       },
       handlers: [Test.Event.Handler],
+      watches: [
+        keys: [:app_state],
+        handler: Test.Update.Handler,
+        handler_init_arg: %{pid: self()},
+        interval: 1
+      ],
       storage: %{
         module: Brook.Storage.Redis,
         init_arg: [redix_args: [host: "localhost"], namespace: "test:snapshot"]
@@ -38,6 +44,7 @@ defmodule Brook.IntegrationTest do
   test "brook happy path" do
     Elsa.produce([localhost: 9092], "test", {"CREATE", Jason.encode!(%{"id" => 123, "name" => "George"})}, partition: 0)
     Elsa.produce([localhost: 9092], "test", {"UPDATE", Jason.encode!(%{"id" => 123, "age" => 67})})
+    Elsa.produce([localhost: 9092], "test", {"UPDATE_APP_STATE", Jason.encode!(%{"name" => "app_state"})})
 
     assert_async(timeout: 2_000, sleep_time: 200) do
       assert %{"id" => 123, "name" => "George", "age" => 67} == Brook.get(123)
@@ -60,6 +67,10 @@ defmodule Brook.IntegrationTest do
 
     assert_async(timeout: 2_000, sleep_time: 200) do
       assert nil == Brook.get(123)
+    end
+
+    assert_async(timeout: 2_000, sleep_time: 200) do
+      assert_receive {:update, :app_state, %{"name" => "app_state"}}
     end
   end
 

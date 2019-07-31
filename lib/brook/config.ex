@@ -14,4 +14,7 @@ defmodule Brook.Config do
       storage: Keyword.fetch!(opts, :storage) |> Enum.into(%{})
     }
   end
+
+  def has_watches?(%__MODULE__{watches: watches}) when watches == %{}, do: false
+  def has_watches?(_), do: true
 end

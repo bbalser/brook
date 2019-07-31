@@ -14,10 +14,17 @@ defmodule Brook.Supervisor do
         {config.storage.module, config.storage.init_arg},
         {Brook.Server, config},
         {config.driver.module, config.driver.init_arg},
-        {Brook.Watcher, config}
+        watcher(config)
       ]
       |> List.flatten()
 
     Supervisor.init(children, strategy: :one_for_one)
+  end
+
+  defp watcher(config) do
+    case Brook.Config.has_watches?(config) do
+      true -> {Brook.Watcher, config}
+      false -> []
+    end
   end
 end
