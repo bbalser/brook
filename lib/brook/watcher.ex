@@ -31,14 +31,16 @@ defmodule Brook.Watcher do
     Map.put(new_state, :last_values, new_values)
   end
 
-  defp handle_update(state, {key, last_value}) do
-    case Brook.get(key) do
+  defp handle_update(state, {{collection, key}, last_value}) do
+    case Brook.get(collection, key) do
       ^last_value ->
-        {state, {key, last_value}}
+        {state, {{collection, key}, last_value}}
 
       new_value ->
-        {:ok, new_handler_state} = apply(state.handler, :handle_update, [key, new_value, state.handler_state])
-        {Map.put(state, :handler_state, new_handler_state), {key, new_value}}
+        {:ok, new_handler_state} =
+          apply(state.handler, :handle_update, [collection, key, new_value, state.handler_state])
+
+        {Map.put(state, :handler_state, new_handler_state), {{collection, key}, new_value}}
     end
   end
 

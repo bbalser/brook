@@ -6,13 +6,13 @@ defmodule Brook.WatchTest do
       Brook.start_link(
         handlers: [Test.Event.Handler],
         watches: [
-          keys: [:app_state],
+          keys: [{:all, :app_state}],
           handler: Test.Update.Handler,
           handler_init_arg: %{pid: self()},
           interval: 1
         ],
         storage: [
-          module: Brook.Test.Storage.Ets,
+          module: Brook.Storage.Ets,
           init_arg: []
         ]
       )
@@ -28,10 +28,10 @@ defmodule Brook.WatchTest do
 
   test "updates to app state call the handler" do
     :ok = Brook.process(event("UPDATE_APP_STATE", %{"id" => "hot_dogs", "count" => 0}))
-    assert_receive {:update, :app_state, %{"id" => "hot_dogs", "count" => 0}}, 2_000
+    assert_receive {:update, :all, :app_state, %{"id" => "hot_dogs", "count" => 0}}, 2_000
 
     :ok = Brook.process(event("UPDATE_APP_STATE", %{"id" => "hot_dogs", "count" => 1}))
-    assert_receive {:update, :app_state, %{"id" => "hot_dogs", "count" => 1}}, 2_000
+    assert_receive {:update, :all, :app_state, %{"id" => "hot_dogs", "count" => 1}}, 2_000
   end
 
   defp event(type, data) do

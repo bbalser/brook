@@ -9,23 +9,23 @@ defmodule Brook.Storage.Redis do
         ]
 
   @impl Brook.Storage
-  def persist(event, key, value) do
-    GenServer.call(via(), {:persist, event, key, value})
+  def persist(event, collection, key, value) do
+    GenServer.call(via(), {:persist, event, collection, key, value})
   end
 
   @impl Brook.Storage
-  def delete(keys) do
-    GenServer.call(via(), {:delete, keys})
+  def delete(collection, key) do
+    GenServer.call(via(), {:delete, collection, key})
   end
 
   @impl Brook.Storage
-  def get(key) do
-    GenServer.call(via(), {:get, key})
+  def get(collection, key) do
+    GenServer.call(via(), {:get, collection, key})
   end
 
   @impl Brook.Storage
-  def get_events(key) do
-    GenServer.call(via(), {:get_events, key})
+  def get_events(collection, key) do
+    GenServer.call(via(), {:get_events, collection, key})
   end
 
   @impl Brook.Storage
@@ -48,25 +48,30 @@ defmodule Brook.Storage.Redis do
   end
 
   @impl GenServer
-  def handle_call({:persist, event, key, value}, _from, state) do
-    Logger.debug(fn -> "#{__MODULE__}: persisting #{key}:#{inspect(value)} to redis" end)
+  def handle_call({:persist, event, collection, key, value}, _from, state) do
+    Logger.debug(fn -> "#{__MODULE__}: persisting #{collection}:#{key}:#{inspect(value)} to redis" end)
 
-    Redix.command!(state.redix, ["SET", key(state, key), :erlang.term_to_binary(value)])
-    Redix.command!(state.redix, ["RPUSH", events_key(state, key), :erlang.term_to_binary(event)])
+    Redix.command!(state.redix, ["SET", key(state, collection, key), :erlang.term_to_binary(value)])
 
-    reply(:ok, state)
-  end
-
-  @impl GenServer
-  def handle_call({:delete, key}, _from, state) do
-    Redix.command!(state.redix, ["DEL", key(state, key), events_key(state, key)])
+    Redix.command!(state.redix, [
+      "RPUSH",
+      events_key(state, collection, key),
+      :erlang.term_to_binary(event, compressed: 9)
+    ])
 
     reply(:ok, state)
   end
 
   @impl GenServer
-  def handle_call({:get, key}, _from, state) do
-    case Redix.command!(state.redix, ["GET", key(state, key)]) do
+  def handle_call({:delete, collection, key}, _from, state) do
+    Redix.command!(state.redix, ["DEL", key(state, collection, key), events_key(state, collection, key)])
+
+    reply(:ok, state)
+  end
+
+  @impl GenServer
+  def handle_call({:get, collection, key}, _from, state) do
+    case Redix.command!(state.redix, ["GET", key(state, collection, key)]) do
       nil -> nil
       value -> :erlang.binary_to_term(value)
     end
@@ -74,31 +79,16 @@ defmodule Brook.Storage.Redis do
   end
 
   @impl GenServer
-  def handle_call({:get_events, key}, _from, state) do
-    case Redix.command!(state.redix, ["LRANGE", events_key(state, key), 0, -1]) do
+  def handle_call({:get_events, collection, key}, _from, state) do
+    case Redix.command!(state.redix, ["LRANGE", events_key(state, collection, key), 0, -1]) do
       nil -> nil
       value -> Enum.map(value, &:erlang.binary_to_term(&1))
     end
     |> reply(state)
   end
 
-  @impl GenServer
-  def handle_call(:get_latest, _from, state) do
-    case Redix.command!(state.redix, ["KEYS", key(state, "*")]) do
-      [] ->
-        []
-
-      keys ->
-        Redix.command!(state.redix, ["MGET" | keys])
-        |> Enum.map(&:erlang.binary_to_term/1)
-        |> Enum.map(fn %{key: key, value: value} -> {key, value} end)
-        |> Enum.into(%{})
-    end
-    |> reply(state)
-  end
-
-  defp key(state, key), do: "#{state.namespace}:#{key}"
-  defp events_key(state, key), do: "#{state.namespace}:#{key}:events"
+  defp key(state, collection, key), do: "#{state.namespace}:#{collection}:#{key}"
+  defp events_key(state, collection, key), do: "#{state.namespace}:#{collection}:#{key}:events"
   defp via(), do: {:via, Registry, {Brook.Registry, __MODULE__}}
   defp reply(reply_value, state), do: {:reply, reply_value, state}
 end

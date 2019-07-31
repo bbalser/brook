@@ -4,20 +4,20 @@ defmodule Brook.Storage.Ets do
 
   @table :brook_test_value
 
-  def persist(%Brook.Event{} = event, key, value) do
-    GenServer.call(__MODULE__, {:persist, event, key, value})
+  def persist(%Brook.Event{} = event, collection, key, value) do
+    GenServer.call(__MODULE__, {:persist, event, collection, key, value})
   end
 
-  def delete(key) do
-    GenServer.call(__MODULE__, {:delete, key})
+  def delete(collection, key) do
+    GenServer.call(__MODULE__, {:delete, collection, key})
   end
 
-  def get(key) do
-    GenServer.call(__MODULE__, {:get, key})
+  def get(collection, key) do
+    GenServer.call(__MODULE__, {:get, collection, key})
   end
 
-  def get_events(key) do
-    GenServer.call(__MODULE__, {:get_events, key})
+  def get_events(collection, key) do
+    GenServer.call(__MODULE__, {:get_events, collection, key})
   end
 
   def start_link(_opts) do
@@ -30,30 +30,30 @@ defmodule Brook.Storage.Ets do
     {:ok, []}
   end
 
-  def handle_call({:persist, event, key, value}, _from, state) do
-    events = get_existing_events(key)
-    :ets.insert(@table, {key, value, events ++ [event]})
+  def handle_call({:persist, event, collection, key, value}, _from, state) do
+    events = get_existing_events({collection, key})
+    :ets.insert(@table, {{collection, key}, value, events ++ [event]})
 
     {:reply, :ok, state}
   end
 
-  def handle_call({:delete, key}, _from, state) do
-    :ets.delete(@table, key)
+  def handle_call({:delete, collection, key}, _from, state) do
+    :ets.delete(@table, {collection, key})
     {:reply, :ok, state}
   end
 
-  def handle_call({:get, key}, _from, state) do
+  def handle_call({:get, collection, key}, _from, state) do
     value =
-      case :ets.lookup(@table, key) do
-        [{^key, value, _events}] -> value
+      case :ets.lookup(@table, {collection, key}) do
+        [{_key, value, _events}] -> value
         _ -> nil
       end
 
     {:reply, value, state}
   end
 
-  def handle_call({:get_events, key}, _from, state) do
-    {:reply, get_existing_events(key), state}
+  def handle_call({:get_events, collection, key}, _from, state) do
+    {:reply, get_existing_events({collection, key}), state}
   end
 
   defp get_existing_events(key) do

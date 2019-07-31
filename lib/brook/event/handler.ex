@@ -1,5 +1,10 @@
 defmodule Brook.Event.Handler do
-  @callback handle_event(Brook.Event.t()) :: {:update, any(), any()} | {:delete, any()} | :discard
+  @type create :: {:create, Brook.view_collection(), Brook.view_key(), Brook.view_value()}
+  @type delete :: {:delete, Brook.view_collection(), Brook.view_key()}
+  @type merge :: {:merge, Brook.view_collection(), Brook.view_key(), Brook.view_value()}
+  @type discard :: :discard
+
+  @callback handle_event(Brook.Event.t()) :: create() | delete() | merge() | discard()
 
   defmacro __using__(_opts) do
     quote do

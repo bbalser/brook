@@ -2,8 +2,9 @@ defmodule Brook do
   @type event_type :: String.t()
   @type event :: term()
 
+  @type view_collection :: String.Chard.t()
   @type view_key :: String.Chars.t()
-  @type view_body :: term()
+  @type view_value :: term()
 
   @type reason :: term()
 
@@ -26,9 +27,9 @@ defmodule Brook do
     GenServer.call({:via, Registry, {Brook.Registry, Brook.Server}}, {:process, event})
   end
 
-  @spec get(view_key()) :: view_body()
-  defdelegate get(key), to: Brook.Server
+  @spec get(view_collection(), view_key()) :: view_value()
+  defdelegate get(collection, key), to: Brook.Server
 
-  @spec get_events(view_key()) :: list(Brook.Event.t())
-  defdelegate get_events(key), to: Brook.Server
+  @spec get_events(view_collection(), view_key()) :: list(Brook.Event.t())
+  defdelegate get_events(collection, key), to: Brook.Server
 end

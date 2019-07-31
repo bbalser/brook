@@ -6,7 +6,7 @@ defmodule BrookTest do
       Brook.start_link(
         handlers: [Test.Event.Handler],
         storage: [
-          module: Brook.Test.Storage.Ets,
+          module: Brook.Storage.Ets,
           init_arg: []
         ]
       )
@@ -20,50 +20,50 @@ defmodule BrookTest do
     [brook: brook]
   end
 
-  test "creat entry in store" do
+  test "create entry in store" do
     :ok = Brook.process(event("CREATE", %{"id" => 123, "name" => "George"}))
 
-    assert %{"id" => 123, "name" => "George"} == Brook.get(123)
+    assert %{"id" => 123, "name" => "George"} == Brook.get(:all, 123)
   end
 
   test "delete store" do
     Brook.process(event("CREATE", %{"id" => 123, "name" => "George"}))
     Brook.process(event("DELETE", %{"id" => 123}))
 
-    assert nil == Brook.get(123)
+    assert nil == Brook.get(:all, 123)
   end
 
   test "merge map into view state" do
     Brook.process(event("CREATE", %{"id" => 1, "name" => "Brody", "age" => 21}))
     Brook.process(event("UPDATE", %{"id" => 1, "age" => 22, "married" => true}))
 
-    assert %{"id" => 1, "name" => "Brody", "age" => 22, "married" => true} == Brook.get(1)
+    assert %{"id" => 1, "name" => "Brody", "age" => 22, "married" => true} == Brook.get(:all, 1)
   end
 
   test "merge map into non existant state" do
     Brook.process(event("UPDATE", %{"id" => 1, "name" => "Brody"}))
 
-    assert %{"id" => 1, "name" => "Brody"} == Brook.get(1)
+    assert %{"id" => 1, "name" => "Brody"} == Brook.get(:all, 1)
   end
 
   test "merge keyword list into view state" do
     Brook.process(event("CREATE", id: 1, name: "Jeff", age: 21))
     Brook.process(event("UPDATE", id: 1, age: 22, married: true))
 
-    assert Keyword.equal?([id: 1, name: "Jeff", age: 22, married: true], Brook.get(1))
+    assert Keyword.equal?([id: 1, name: "Jeff", age: 22, married: true], Brook.get(:all, 1))
   end
 
   test "merge keyword list into not existent state" do
     Brook.process(event("UPDATE", id: 1, age: 22, married: true))
 
-    assert Keyword.equal?([id: 1, age: 22, married: true], Brook.get(1))
+    assert Keyword.equal?([id: 1, age: 22, married: true], Brook.get(:all, 1))
   end
 
   test "merge using function into view state" do
     Brook.process(event("CREATE", %{"id" => 1, "total" => 10}))
     Brook.process(event("ADD", %{"id" => 1, "add" => 5}))
 
-    assert %{"id" => 1, "total" => 15} == Brook.get(1)
+    assert %{"id" => 1, "total" => 15} == Brook.get(:all, 1)
   end
 
   # test "raises exception when attempting to merge unknown types without a function" do
