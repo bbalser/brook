@@ -32,4 +32,7 @@ defmodule Brook do
 
   @spec get_events(view_collection(), view_key()) :: list(Brook.Event.t())
   defdelegate get_events(collection, key), to: Brook.Server
+
+  @spec get_all(view_collection()) :: %{required(view_key()) => view_value()}
+  defdelegate get_all(collection), to: Brook.Server
 end

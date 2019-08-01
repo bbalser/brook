@@ -20,6 +20,10 @@ defmodule Brook.Storage.Ets do
     GenServer.call(__MODULE__, {:get_events, collection, key})
   end
 
+  def get_all(collection) do
+    GenServer.call(__MODULE__, {:get_all, collection})
+  end
+
   def start_link(_opts) do
     GenServer.start_link(__MODULE__, [], name: __MODULE__)
   end
@@ -43,17 +47,24 @@ defmodule Brook.Storage.Ets do
   end
 
   def handle_call({:get, collection, key}, _from, state) do
-    value =
-      case :ets.lookup(@table, {collection, key}) do
-        [{_key, value, _events}] -> value
-        _ -> nil
-      end
-
-    {:reply, value, state}
+    case :ets.lookup(@table, {collection, key}) do
+      [{_key, value, _events}] -> value
+      _ -> nil
+    end
+    |> reply(state)
   end
 
   def handle_call({:get_events, collection, key}, _from, state) do
     {:reply, get_existing_events({collection, key}), state}
+  end
+
+  def handle_call({:get_all, collection}, _from, state) do
+    :ets.match_object(@table, {{collection, :_}, :_, :_})
+    |> Enum.map(fn {{_collection, key}, value, _events} ->
+      {key, value}
+    end)
+    |> Enum.into(%{})
+    |> reply(state)
   end
 
   defp get_existing_events(key) do
@@ -62,4 +73,6 @@ defmodule Brook.Storage.Ets do
       [{^key, _value, events}] -> events
     end
   end
+
+  defp reply(value, state), do: {:reply, value, state}
 end

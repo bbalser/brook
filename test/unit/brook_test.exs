@@ -66,6 +66,18 @@ defmodule BrookTest do
     assert %{"id" => 1, "total" => 15} == Brook.get(:all, 1)
   end
 
+  test "get_all returns all events" do
+    Brook.process(event("CREATE", %{"id" => 1, "total" => 10}))
+    Brook.process(event("CREATE", %{"id" => 2, "total" => 10}))
+
+    expected = %{
+      1 => %{"id" => 1, "total" => 10},
+      2 => %{"id" => 2, "total" => 10}
+    }
+
+    assert expected == Brook.get_all(:all)
+  end
+
   # test "raises exception when attempting to merge unknown types without a function" do
   #   Brook.process(event("STORE_LIST", [1, 2, 3, 4]))
 

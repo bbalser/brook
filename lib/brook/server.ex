@@ -6,6 +6,10 @@ defmodule Brook.Server do
     GenServer.call(via(), {:get, collection, key})
   end
 
+  def get_all(collection) do
+    GenServer.call(via(), {:get_all, collection})
+  end
+
   def get_events(collection, key) do
     GenServer.call(via(), {:get_events, collection, key})
   end
@@ -21,6 +25,11 @@ defmodule Brook.Server do
   def handle_call({:get, collection, key}, _from, state) do
     value = apply(state.storage.module, :get, [collection, key])
     {:reply, value, state}
+  end
+
+  def handle_call({:get_all, collection}, _from, state) do
+    values = apply(state.storage.module, :get_all, [collection])
+    {:reply, values, state}
   end
 
   def handle_call({:get_events, collection, key}, _from, state) do
