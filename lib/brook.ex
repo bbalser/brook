@@ -51,9 +51,9 @@ defmodule Brook do
   @spec get_all(view_collection()) :: {:ok, %{required(view_key()) => view_value()}} | {:error, reason()}
   defdelegate get_all(collection), to: Brook.Server
 
-  @spec get_all!(view_collection(), view_key()) :: %{required(view_key()) => view_value()}
-  def get_all!(collection, key) do
-    case get_all(collection, key) do
+  @spec get_all!(view_collection()) :: %{required(view_key()) => view_value()}
+  def get_all!(collection) do
+    case get_all(collection) do
       {:ok, value} -> value
       {:error, reason} -> raise reason
     end

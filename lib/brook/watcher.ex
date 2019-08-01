@@ -33,14 +33,19 @@ defmodule Brook.Watcher do
 
   defp handle_update(state, {{collection, key}, last_value}) do
     case Brook.get(collection, key) do
-      ^last_value ->
+      {:ok, ^last_value} ->
         {state, {{collection, key}, last_value}}
 
-      new_value ->
+      {:ok, new_value} ->
         {:ok, new_handler_state} =
           apply(state.handler, :handle_update, [collection, key, new_value, state.handler_state])
 
         {Map.put(state, :handler_state, new_handler_state), {{collection, key}, new_value}}
+
+      {:error, err} ->
+        Logger.error(
+          "Watcher unable to retrieve updated value for #{inspect(collection)}:#{inspect(key)}: #{inspect(err)}"
+        )
     end
   end
 
