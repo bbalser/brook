@@ -24,17 +24,17 @@ defmodule Brook.Server do
 
   def handle_call({:get, collection, key}, _from, state) do
     value = apply(state.storage.module, :get, [collection, key])
-    {:reply, value, state}
+    {:reply, {:ok, value}, state}
   end
 
   def handle_call({:get_all, collection}, _from, state) do
     values = apply(state.storage.module, :get_all, [collection])
-    {:reply, values, state}
+    {:reply, {:ok, values}, state}
   end
 
   def handle_call({:get_events, collection, key}, _from, state) do
     events = apply(state.storage.module, :get_events, [collection, key])
-    {:reply, events, state}
+    {:reply, {:ok, events}, state}
   end
 
   def handle_call({:process, %Brook.Event{} = event}, _from, state) do

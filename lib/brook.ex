@@ -27,12 +27,35 @@ defmodule Brook do
     GenServer.call({:via, Registry, {Brook.Registry, Brook.Server}}, {:process, event})
   end
 
-  @spec get(view_collection(), view_key()) :: view_value()
+  @spec get(view_collection(), view_key()) :: {:ok, view_value()} | {:error, reason()}
   defdelegate get(collection, key), to: Brook.Server
 
-  @spec get_events(view_collection(), view_key()) :: list(Brook.Event.t())
+  def get!(collection, key) do
+    case get(collection, key) do
+      {:ok, value} -> value
+      {:error, reason} -> raise reason
+    end
+  end
+
+  @spec get_events(view_collection(), view_key()) :: {:ok, list(Brook.Event.t())} | {:error, reason()}
   defdelegate get_events(collection, key), to: Brook.Server
 
-  @spec get_all(view_collection()) :: %{required(view_key()) => view_value()}
+  @spec get_events!(view_collection(), view_key()) :: list(Brook.Event.t())
+  def get_events!(collection, key) do
+    case get_events(collection, key) do
+      {:ok, value} -> value
+      {:error, reason} -> raise reason
+    end
+  end
+
+  @spec get_all(view_collection()) :: {:ok, %{required(view_key()) => view_value()}} | {:error, reason()}
   defdelegate get_all(collection), to: Brook.Server
+
+  @spec get_all!(view_collection(), view_key()) :: %{required(view_key()) => view_value()}
+  def get_all!(collection, key) do
+    case get_all(collection, key) do
+      {:ok, value} -> value
+      {:error, reason} -> raise reason
+    end
+  end
 end
