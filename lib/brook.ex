@@ -58,4 +58,20 @@ defmodule Brook do
       {:error, reason} -> raise reason
     end
   end
+
+  @spec get_all_values(view_collection()) :: {:ok, [view_value()]} | {:error, reason()}
+  def get_all_values(collection) do
+    case get_all(collection) do
+      {:ok, map} -> {:ok, Map.values(map)}
+      error -> error
+    end
+  end
+
+  @spec get_all_values!(view_collection()) :: [view_value()]
+  def get_all_values!(collection) do
+    case get_all_values(collection) do
+      {:ok, values} -> values
+      {:error, reason} -> raise reason
+    end
+  end
 end
