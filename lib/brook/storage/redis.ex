@@ -89,12 +89,13 @@ defmodule Brook.Storage.Redis do
 
   @impl GenServer
   def handle_call({:get_all, collection}, _from, state) do
-    case Redix.command!(state.redix, ["KEYS", "#{state.namespace}:#{collection}:*[^:events]"]) do
+    case Redix.command!(state.redix, ["KEYS", "#{state.namespace}:#{collection}:*"]) do
       [] ->
         %{}
 
       keys ->
-        Redix.command!(state.redix, ["MGET" | keys])
+        Enum.filter(keys, fn key -> !String.ends_with?(key, ":events") end)
+        |> multiget(state.redix)
         |> Enum.map(&:erlang.binary_to_term(&1))
         |> Enum.map(fn %{key: key, value: value} -> {key, value} end)
         |> Enum.into(%{})
@@ -111,6 +112,7 @@ defmodule Brook.Storage.Redis do
     |> reply(state)
   end
 
+  defp multiget(keys, host), do: Redix.command!(host, ["MGET" | keys])
   defp key(state, collection, key), do: "#{state.namespace}:#{collection}:#{key}"
   defp events_key(state, collection, key), do: "#{state.namespace}:#{collection}:#{key}:events"
   defp via(), do: {:via, Registry, {Brook.Registry, __MODULE__}}
