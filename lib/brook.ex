@@ -17,17 +17,6 @@ defmodule Brook do
 
   defdelegate child_spec(args), to: Brook.Supervisor
 
-  @spec send_event(event_type(), author(), event()) :: :ok | {:error, reason()}
-  def send_event(type, author, event) do
-    GenServer.call({:via, Registry, {Brook.Registry, Brook.Server}}, {:send, type, author, event})
-    :ok
-  end
-
-  @spec process(Brook.Event.t()) :: :ok | {:error, reason()}
-  def process(%Brook.Event{} = event) do
-    GenServer.call({:via, Registry, {Brook.Registry, Brook.Server}}, {:process, event})
-  end
-
   @spec get(view_collection(), view_key()) :: {:ok, view_value()} | {:error, reason()}
   defdelegate get(collection, key), to: Brook.Server
 

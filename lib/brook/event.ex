@@ -24,4 +24,15 @@ defmodule Brook.Event do
   def update_data(%Brook.Event{data: data} = event, function) when is_function(function, 1) do
     %Brook.Event{event | data: function.(data)}
   end
+
+  @spec send(Brook.event_type(), Brook.author(), Brook.event()) :: :ok | {:error, Brook.reason()}
+  def send(type, author, event) do
+    GenServer.call({:via, Registry, {Brook.Registry, Brook.Server}}, {:send, type, author, event})
+    :ok
+  end
+
+  @spec process(Brook.Event.t()) :: :ok | {:error, Brook.reason()}
+  def process(%Brook.Event{} = event) do
+    GenServer.call({:via, Registry, {Brook.Registry, Brook.Server}}, {:process, event})
+  end
 end

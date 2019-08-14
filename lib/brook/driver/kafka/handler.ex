@@ -3,7 +3,7 @@ defmodule Brook.Driver.Kafka.Handler do
 
   def handle_messages(messages) do
     messages
-    |> Enum.each(fn message -> Brook.process(event(message)) end)
+    |> Enum.each(fn message -> Brook.Event.process(event(message)) end)
 
     :ack
   end
