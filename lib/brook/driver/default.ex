@@ -14,7 +14,18 @@ defmodule Brook.Driver.Default do
     :ok
   end
 
-  def send_event(_type, _author, _data) do
+  def send_event(type, author, data) do
+    event = %Brook.Event{
+      type: type,
+      author: author,
+      create_ts: DateTime.utc_now() |> DateTime.to_unix(),
+      data: data,
+      ack_ref: :ack_ref,
+      ack_data: :ack_data
+    }
+
+    GenServer.cast({:via, Registry, {Brook.Registry, Brook.Server}}, {:process, event})
+
     :ok
   end
 end
