@@ -14,7 +14,7 @@ defmodule Brook.Driver.Default do
     :ok
   end
 
-  def send_event(_type, _data) do
+  def send_event(_type, _author, _data) do
     :ok
   end
 end

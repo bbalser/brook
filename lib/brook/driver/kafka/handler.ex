@@ -8,10 +8,14 @@ defmodule Brook.Driver.Kafka.Handler do
     :ack
   end
 
-  def event(%{key: type, value: data} = message) do
+  def event(%{key: type, value: value, timestamp: ts} = message) do
+    decoded_json = Jason.decode!(value)
+
     %Brook.Event{
       type: type,
-      data: Jason.decode!(data),
+      author: decoded_json["author"],
+      create_ts: ts,
+      data: decoded_json["data"],
       ack_ref: ack_ref(message),
       ack_data: ack_data(message)
     }

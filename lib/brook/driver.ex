@@ -8,5 +8,5 @@ defmodule Brook.Driver do
 
   @callback ack(ack_ref(), list(ack_data())) :: :ok
 
-  @callback send_event(Brook.event_type(), Brook.event()) :: :ok | {:error, Brook.reason()}
+  @callback send_event(Brook.event_type(), Brook.author(), Brook.event()) :: :ok | {:error, Brook.reason()}
 end

@@ -95,6 +95,6 @@ defmodule BrookTest do
   end
 
   defp event(type, data) do
-    %Brook.Event{type: type, data: data}
+    %Brook.Event{type: type, author: "testing", data: data}
   end
 end

@@ -58,8 +58,8 @@ defmodule Brook.Server do
     {:reply, :ok, state}
   end
 
-  def handle_call({:send, type, event}, _from, state) do
-    :ok = apply(state.driver.module, :send_event, [type, event])
+  def handle_call({:send, type, author, event}, _from, state) do
+    :ok = apply(state.driver.module, :send_event, [type, author, event])
     {:reply, :ok, state}
   end
 
