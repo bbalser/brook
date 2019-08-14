@@ -1,5 +1,6 @@
 defmodule BrookTest do
   use ExUnit.Case
+  use Placebo
 
   setup do
     {:ok, brook} =
@@ -24,6 +25,20 @@ defmodule BrookTest do
     :ok = Brook.process(event("CREATE", %{"id" => 123, "name" => "George"}))
 
     assert {:ok, %{"id" => 123, "name" => "George"}} == Brook.get(:all, 123)
+  end
+
+  test "calls dispatcher" do
+    allow Brook.Dispatcher.Default.dispatch(any()), return: :ok
+    event = event("CREATE", %{"id" => 456, "name" => "Bob"})
+    :ok = Brook.process(event)
+
+    assert_called Brook.Dispatcher.Default.dispatch(event)
+  end
+
+  test "does not call storage module when forwrded is true" do
+    :ok = Brook.process(event("CREATE", %{"id" => 123, "name" => "Robert"}, forwarded: true))
+
+    assert nil == Brook.get!(:all, 123)
   end
 
   test "delete store" do
@@ -94,7 +109,8 @@ defmodule BrookTest do
     assert :discard == Test.Event.Handler.handle_event(event("DISCARD", :some_event))
   end
 
-  defp event(type, data) do
+  defp event(type, data, opts \\ []) do
     %Brook.Event{type: type, author: "testing", data: data}
+    |> Map.merge(Enum.into(opts, %{}))
   end
 end

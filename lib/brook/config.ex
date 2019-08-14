@@ -3,13 +3,15 @@ defmodule Brook.Config do
 
   defstruct driver: nil,
             event_handlers: nil,
-            storage: nil
+            storage: nil,
+            dispatcher: nil
 
   def new(opts) do
     %__MODULE__{
       driver: Keyword.get(opts, :driver, @default_driver) |> Enum.into(%{}),
       event_handlers: Keyword.fetch!(opts, :handlers),
-      storage: Keyword.fetch!(opts, :storage) |> Enum.into(%{})
+      storage: Keyword.fetch!(opts, :storage) |> Enum.into(%{}),
+      dispatcher: Keyword.get(opts, :dispatcher, Brook.Dispatcher.Default)
     }
   end
 end
