@@ -19,12 +19,6 @@ defmodule Brook.IntegrationTest do
         ]
       },
       handlers: [Test.Event.Handler],
-      watches: [
-        keys: [{:all, :app_state}],
-        handler: Test.Update.Handler,
-        handler_init_arg: %{pid: self()},
-        interval: 1
-      ],
       storage: %{
         module: Brook.Storage.Redis,
         init_arg: [redix_args: [host: "localhost"], namespace: "test:snapshot"]
@@ -76,10 +70,6 @@ defmodule Brook.IntegrationTest do
 
     assert_async(timeout: 2_000, sleep_time: 200) do
       assert {:ok, nil} == Brook.get(:all, 123)
-    end
-
-    assert_async(timeout: 2_000, sleep_time: 200) do
-      assert_receive {:update, :all, :app_state, %{"name" => "app_state"}}
     end
   end
 

@@ -3,18 +3,13 @@ defmodule Brook.Config do
 
   defstruct driver: nil,
             event_handlers: nil,
-            watches: nil,
             storage: nil
 
   def new(opts) do
     %__MODULE__{
       driver: Keyword.get(opts, :driver, @default_driver) |> Enum.into(%{}),
       event_handlers: Keyword.fetch!(opts, :handlers),
-      watches: Keyword.get(opts, :watches, %{}) |> Enum.into(%{}),
       storage: Keyword.fetch!(opts, :storage) |> Enum.into(%{})
     }
   end
-
-  def has_watches?(%__MODULE__{watches: watches}) when watches == %{}, do: false
-  def has_watches?(_), do: true
 end
