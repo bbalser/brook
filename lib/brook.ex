@@ -2,7 +2,7 @@ defmodule Brook do
   @type event_type :: String.t()
   @type event :: term()
 
-  @type view_collection :: String.Chard.t()
+  @type view_collection :: String.Chars.t()
   @type view_key :: String.Chars.t()
   @type view_value :: term()
 
