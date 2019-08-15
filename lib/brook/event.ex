@@ -14,7 +14,7 @@ defmodule Brook.Event do
   @enforce_keys [:type, :author, :data]
   defstruct type: nil,
             author: nil,
-            create_ts: nil,
+            create_ts: DateTime.utc_now() |> DateTime.to_unix(:millisecond),
             data: nil,
             ack_ref: nil,
             ack_data: nil,

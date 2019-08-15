@@ -55,9 +55,6 @@ defmodule Brook.Server do
   end
 
   defp process(%{forwarded: false} = event, state) do
-    IO.inspect(event, label: "Origin event")
-    apply(state.dispatcher, :dispatch, [event])
-
     Enum.each(state.event_handlers, fn handler ->
       case apply(handler, :handle_event, [event]) do
         {:create, collection, key, value} ->
@@ -74,10 +71,11 @@ defmodule Brook.Server do
           nil
       end
     end)
+
+    apply(state.dispatcher, :dispatch, [event])
   end
 
   defp process(%{forwarded: true} = event, state) do
-    IO.inspect(event, label: "Forwarded Event")
     Enum.each(state.event_handlers, fn handler ->
       apply(handler, :handle_event, [event])
     end)
