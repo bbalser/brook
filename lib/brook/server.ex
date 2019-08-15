@@ -19,6 +19,8 @@ defmodule Brook.Server do
   end
 
   def init(%Brook.Config{} = config) do
+    config.dispatcher.init()
+
     {:ok, config}
   end
 
@@ -38,6 +40,21 @@ defmodule Brook.Server do
   end
 
   def handle_call({:process, %Brook.Event{} = event}, _from, state) do
+    process(event, state)
+    {:reply, :ok, state}
+  end
+
+  def handle_call({:send, type, author, event}, _from, state) do
+    :ok = apply(state.driver.module, :send_event, [type, author, event])
+    {:reply, :ok, state}
+  end
+
+  def handle_cast({:process, %Brook.Event{} = event}, state) do
+    process(event, state)
+    {:noreply, state}
+  end
+
+  defp process(%{forwarded: false} = event, state) do
     Enum.each(state.event_handlers, fn handler ->
       case apply(handler, :handle_event, [event]) do
         {:create, collection, key, value} ->
@@ -55,12 +72,13 @@ defmodule Brook.Server do
       end
     end)
 
-    {:reply, :ok, state}
+    apply(state.dispatcher, :dispatch, [event])
   end
 
-  def handle_call({:send, type, event}, _from, state) do
-    :ok = apply(state.driver.module, :send_event, [type, event])
-    {:reply, :ok, state}
+  defp process(%{forwarded: true} = event, state) do
+    Enum.each(state.event_handlers, fn handler ->
+      apply(handler, :handle_event, [event])
+    end)
   end
 
   defp merge(collection, key, %{} = value, state) do

@@ -50,9 +50,15 @@ defmodule Brook.Driver.Kafka do
   end
 
   @impl Brook.Driver
-  def send_event(type, data) do
+  def send_event(type, author, data) do
     topic = get_topic()
-    Elsa.produce_sync(topic, {type, Jason.encode!(data)}, name: @name)
+
+    message = %{
+      "author" => author,
+      "data" => data
+    }
+
+    Elsa.produce_sync(topic, {type, Jason.encode!(message)}, name: @name)
   end
 
   defp store_topic(topic) do

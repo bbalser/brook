@@ -26,6 +26,7 @@ defmodule Brook.MixProject do
       {:redix, "~> 0.10.2"},
       {:jason, "~> 1.1"},
       {:elsa, "~> 0.7.1"},
+      {:placebo, "~> 1.2", only: [:dev, :test]},
       {:assertions, "~> 0.14.1", only: [:test, :integration]},
       {:divo, "~> 1.1", only: [:dev, :integration]},
       {:divo_kafka, "~> 0.1.5", only: [:integration]},
