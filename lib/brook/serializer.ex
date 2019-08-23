@@ -8,10 +8,11 @@ defprotocol Brook.Event.Kafka.Serializer do
 end
 
 defprotocol Brook.Event.Kafka.Deserializer do
+  @type t :: term()
   @type reason :: term()
   @fallback_to_any true
 
-  @spec deserialize(module(), term()) :: {:ok, term()} | {:error, reason()}
+  @spec deserialize(t(), term()) :: {:ok, term()} | {:error, reason()}
   def deserialize(struct, data)
 end
 
@@ -33,15 +34,8 @@ defimpl Brook.Event.Kafka.Deserializer, for: Any do
     Jason.decode(data)
   end
 
-  def deserialize(struct_module, data) do
-    case function_exported?(struct_module, :__struct__, 0) do
-      true -> decode_struct(struct_module, data)
-      false -> {:error, :invalid_struct}
-    end
-  end
-
-  defp decode_struct(struct_module, json) do
-    case Jason.decode(json, keys: :atoms) do
+  def deserialize(%struct_module{}, data) do
+    case Jason.decode(data, keys: :atoms) do
       {:ok, decoded_json} -> {:ok, struct(struct_module, decoded_json)}
       result -> result
     end
