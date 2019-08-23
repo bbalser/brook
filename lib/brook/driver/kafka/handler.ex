@@ -47,10 +47,16 @@ defmodule Brook.Driver.Kafka.Handler do
     %{offset: offset}
   end
 
-  defp deserialize_data(%{"data" => data} = decoded_json) do
-    decoded_json
-    |> Map.get("__struct__", "undefined")
-    |> String.to_atom()
-    |> Deserializer.deserialize(data)
+  defp deserialize_data(%{"__struct__" => struct, "data" => data}) do
+    module = String.to_atom(struct)
+    Code.ensure_loaded(module)
+    case function_exported?(module, :__struct__, 0) do
+      true -> Deserializer.deserialize(apply(module, :__struct__, []), data)
+      false -> {:error, :invalid_struct}
+    end
+  end
+
+  defp deserialize_data(%{"data" => data}) do
+    Deserializer.deserialize(:undefined, data)
   end
 end

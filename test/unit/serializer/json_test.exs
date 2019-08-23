@@ -51,7 +51,7 @@ defmodule Brook.Event.Kafka.Serializer.JsonTest do
 
       expected = %TempStruct{name: "Corey", age: 33, location: "Hawaii"}
 
-      assert {:ok, expected} == Brook.Event.Kafka.Deserializer.deserialize(TempStruct, data)
+      assert {:ok, expected} == Brook.Event.Kafka.Deserializer.deserialize(%TempStruct{}, data)
     end
 
     test "returns error when unable to decode input" do
@@ -67,13 +67,7 @@ defmodule Brook.Event.Kafka.Serializer.JsonTest do
 
       {:error, reason} = Jason.decode(data)
 
-      assert {:error, reason} == Brook.Event.Kafka.Deserializer.deserialize(TempStruct, data)
-    end
-
-    test "returns an error when given in invalid struct" do
-      data = %{"one" => 1} |> Jason.encode!()
-
-      assert {:error, :invalid_struct} == Brook.Event.Kafka.Deserializer.deserialize(FakeStruct, data)
+      assert {:error, reason} == Brook.Event.Kafka.Deserializer.deserialize(%TempStruct{}, data)
     end
   end
 end
