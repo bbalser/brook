@@ -1,6 +1,9 @@
 defmodule Brook.Driver.Kafka do
   @behaviour Brook.Driver
   use Supervisor
+  require Logger
+
+  alias Brook.Event.Kafka.Serializer
 
   @name :brook_driver_elsa
 
@@ -51,14 +54,17 @@ defmodule Brook.Driver.Kafka do
 
   @impl Brook.Driver
   def send_event(type, author, data) do
-    topic = get_topic()
+    case create_message(type, author, data) do
+      {:ok, message} ->
+        Elsa.produce_sync(get_topic(), {type, Jason.encode!(message)}, name: @name)
 
-    message = %{
-      "author" => author,
-      "data" => data
-    }
-
-    Elsa.produce_sync(topic, {type, Jason.encode!(message)}, name: @name)
+      {:error, reason} ->
+        Logger.error(
+          "Unable to send event to kafka broker: type(#{type}), author(#{author}), data(#{inspect(data)}), error reason: #{
+            inspect(reason)
+          }"
+        )
+    end
   end
 
   defp store_topic(topic) do
@@ -68,5 +74,15 @@ defmodule Brook.Driver.Kafka do
   defp get_topic() do
     {:ok, topic} = Registry.meta(Brook.Registry, :"#{@name}_topic")
     topic
+  end
+
+  defp create_message(type, author, data) do
+    message = %{"type" => type, "author" => author}
+
+    case Serializer.serialize(data) do
+      {:ok, value} -> {:ok, Map.put(message, "data", value)}
+      {:ok, struct, value} -> {:ok, Map.put(message, "data", value) |> Map.put("__struct__", struct)}
+      result -> result
+    end
   end
 end
