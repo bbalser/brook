@@ -33,7 +33,6 @@ defmodule Test.Event.Handler do
   end
 
   def handle_event(%Brook.Event{type: "UNKNOWN"} = event) do
-    IO.inspect(event, label: "Brook Event")
     :discard
   end
 
