@@ -20,7 +20,7 @@ defimpl Brook.Event.Kafka.Serializer, for: Any do
   def serialize(%custom_struct{} = data) do
     case data |> Map.from_struct() |> serialize() do
       {:ok, serialized_data} -> {:ok, custom_struct, serialized_data}
-      result -> result
+      error_result -> error_result
     end
   end
 
@@ -37,7 +37,7 @@ defimpl Brook.Event.Kafka.Deserializer, for: Any do
   def deserialize(%struct_module{}, data) do
     case Jason.decode(data, keys: :atoms) do
       {:ok, decoded_json} -> {:ok, struct(struct_module, decoded_json)}
-      result -> result
+      error_result -> error_result
     end
   end
 end

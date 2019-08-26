@@ -82,7 +82,7 @@ defmodule Brook.Driver.Kafka do
     case Serializer.serialize(data) do
       {:ok, value} -> {:ok, Map.put(message, "data", value)}
       {:ok, struct, value} -> {:ok, Map.put(message, "data", value) |> Map.put("__struct__", struct)}
-      result -> result
+      error_result -> error_result
     end
   end
 end
