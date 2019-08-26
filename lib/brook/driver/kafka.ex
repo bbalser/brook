@@ -1,6 +1,7 @@
 defmodule Brook.Driver.Kafka do
   @behaviour Brook.Driver
   use Supervisor
+  require Logger
 
   @name :brook_driver_elsa
 
@@ -40,25 +41,8 @@ defmodule Brook.Driver.Kafka do
   end
 
   @impl Brook.Driver
-  def ack(%{topic: topic, partition: partition, generation_id: generation_id}, ack_data) do
-    max_offset =
-      ack_data
-      |> Enum.map(fn ack -> ack.offset end)
-      |> Enum.max()
-
-    Elsa.Group.Manager.ack(:brook_driver_elsa, topic, partition, generation_id, max_offset)
-  end
-
-  @impl Brook.Driver
-  def send_event(type, author, data) do
-    topic = get_topic()
-
-    message = %{
-      "author" => author,
-      "data" => data
-    }
-
-    Elsa.produce_sync(topic, {type, Jason.encode!(message)}, name: @name)
+  def send_event(type, message) do
+    Elsa.produce_sync(get_topic(), {type, message}, name: @name)
   end
 
   defp store_topic(topic) do
