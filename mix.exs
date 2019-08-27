@@ -46,16 +46,15 @@ defmodule Brook.MixProject do
   defp package do
     [
       maintainers: ["Brian Balser"],
-      license: ["Apache 2.0"],
+      licenses: ["Apache 2.0"],
       links: %{"GitHub" => "https://github.com/bbalser/brook"}
     ]
   end
 
   defp description do
-    "Brook provides an event stream client interface for distributed applications
-    to communicate indirectly and asynchronously. Brook sends and receives
-    messages with the event stream (typically a message queue service) via a driver
+    "Brook provides an event stream client interface for distributed applications. 
+    Brook sends and receives messages with the event stream via a driver
     module and persists an application-specific view of the event stream via a
-    storage module (defaulting to ETS)."
+    storage module."
   end
 end
