@@ -4,8 +4,15 @@ defmodule Brook.Dispatcher do
   `init/0` and `dispatch/1` functions be implemented by
   the client.
   """
+
+  @doc """
+  Start a Brook dispatcher.
+  """
   @callback init() :: :ok
 
+  @doc """
+  Distributes received messages across multiple nodes.
+  """
   @callback dispatch(Brook.Event.t()) :: :ok
 end
 

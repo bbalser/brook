@@ -58,14 +58,25 @@ defmodule Brook do
   The default module uses ETS for fast, local, in-memory storage and retrieval (great for
   testing purposes!) with an additional Redis-based module as well.
   """
+  @typedoc "The catagory of event to contextualize the data of an event message"
   @type event_type :: String.t()
+
+  @typedoc "The data component of an event message"
   @type event :: term()
+
+  @typedoc "The source application generating an event message"
   @type author :: String.Chars.t()
 
+  @typedoc "The grouping of events by catagory for persisted view storage"
   @type view_collection :: String.Chars.t()
+
+  @typedoc "The index by which events are stored in a view state collection"
   @type view_key :: String.Chars.t()
+
+  @typedoc "The event data stored within a view state collection, indexed by key"
   @type view_value :: term()
 
+  @typedoc "The potential negative return value of a view state query."
   @type reason :: term()
 
   defmodule UnsupportedMerge do

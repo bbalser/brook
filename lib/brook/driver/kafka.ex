@@ -1,15 +1,30 @@
 defmodule Brook.Driver.Kafka do
+  @moduledoc """
+  Implements the `Brook.Driver` behaviour for using Kafka
+  as the message bus underlying the event stream.
+
+  Brook's Kafka driver uses the (Elsa)[https://github.com/bbalser/elsa]
+  library for subscribing to and sending messages to a Kafka
+  topic handling event stream communication between distributed
+  applications.
+  """
   @behaviour Brook.Driver
   use Supervisor
   require Logger
 
   @name :brook_driver_elsa
 
+  @doc """
+  Start `Brook.Driver` and link to the current process
+  """
   @impl Brook.Driver
   def start_link(init_arg) do
     Supervisor.start_link(__MODULE__, init_arg)
   end
 
+  @doc """
+
+  """
   @impl Supervisor
   def init(init_arg) do
     topic = Keyword.fetch!(init_arg, :topic)

@@ -6,12 +6,25 @@ defmodule Brook.Driver do
   serialized events with an accompanying event type for pattern matching to handle
   different types of events from a single client event handling module.
   """
+
+  @typedoc "Brook event message data encoded to a serialized format"
   @type serialized_event :: term()
 
+  @doc """
+  Start a Brook driver and link to the current process.
+  """
   @callback start_link(term()) :: GenServer.on_start()
 
+  @doc """
+  Return a child specification for the Brook driver for inclusion
+  in an application supervision tree.
+  """
   @callback child_spec(term()) :: Supervisor.child_spec()
 
+  @doc """
+  Send a Brook event to the event stream with a contextual event
+  type and a data value serialized for transfer.
+  """
   @callback send_event(Brook.event_type(), serialized_event()) :: :ok | {:error, Brook.reason()}
 end
 
