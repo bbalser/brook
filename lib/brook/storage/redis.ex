@@ -1,4 +1,10 @@
 defmodule Brook.Storage.Redis do
+  @moduledoc """
+  Implements the `Brook.Storage` behaviour for the Redis
+  key/value storage system, saving the application view state
+  as binary encodings of the direct Elixir terms to be saved with
+  maximum compression.
+  """
   use GenServer
   require Logger
   @behaviour Brook.Storage
