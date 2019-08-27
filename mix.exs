@@ -4,7 +4,7 @@ defmodule Brook.MixProject do
   def project do
     [
       app: :brook,
-      version: "0.1.0",
+      version: "0.1.1",
       elixir: "~> 1.8",
       description: description(),
       package: package(),
@@ -32,7 +32,8 @@ defmodule Brook.MixProject do
       {:assertions, "~> 0.14.1", only: [:test, :integration]},
       {:divo, "~> 1.1", only: [:dev, :integration]},
       {:divo_kafka, "~> 0.1.5", only: [:integration]},
-      {:divo_redis, "~> 0.1.4", only: [:integration]}
+      {:divo_redis, "~> 0.1.4", only: [:integration]},
+      {:ex_doc, "~> 0.20.2", only: [:dev]}
     ]
   end
 
