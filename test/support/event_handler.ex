@@ -32,8 +32,7 @@ defmodule Test.Event.Handler do
     {:merge, :all, :app_state, data}
   end
 
-  def handle_event(%Brook.Event{type: "UNKNOWN"} = event) do
-    IO.inspect(event, label: "Brook Event")
+  def handle_event(%Brook.Event{type: "UNKNOWN"}) do
     :discard
   end
 

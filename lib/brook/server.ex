@@ -39,22 +39,34 @@ defmodule Brook.Server do
     {:reply, {:ok, events}, state}
   end
 
-  def handle_call({:process, %Brook.Event{} = event}, _from, state) do
+  def handle_call({:process, event}, _from, state) do
     process(event, state)
     {:reply, :ok, state}
   end
 
   def handle_call({:send, type, author, event}, _from, state) do
-    :ok = apply(state.driver.module, :send_event, [type, author, event])
+    brook_event = %Brook.Event{
+      type: type,
+      author: author,
+      data: event
+    }
+
+    case Brook.Event.Serializer.serialize(brook_event) do
+      {:ok, serialized_event} ->
+        :ok = apply(state.driver.module, :send_event, [type, serialized_event])
+      {:error, reason} ->
+        Logger.error("Unable to send event: type(#{type}), author(#{author}), event(#{inspect(event)}), error reason: #{inspect(reason)}")
+    end
+
     {:reply, :ok, state}
   end
 
-  def handle_cast({:process, %Brook.Event{} = event}, state) do
+  def handle_cast({:process, event}, state) do
     process(event, state)
     {:noreply, state}
   end
 
-  defp process(%{forwarded: false} = event, state) do
+  defp process(%Brook.Event{forwarded: false} = event, state) do
     Enum.each(state.event_handlers, fn handler ->
       case apply(handler, :handle_event, [event]) do
         {:create, collection, key, value} ->
@@ -75,10 +87,18 @@ defmodule Brook.Server do
     apply(state.dispatcher, :dispatch, [event])
   end
 
-  defp process(%{forwarded: true} = event, state) do
+  defp process(%Brook.Event{forwarded: true} = event, state) do
     Enum.each(state.event_handlers, fn handler ->
       apply(handler, :handle_event, [event])
     end)
+  end
+
+  defp process(event, state) do
+    case Brook.Event.Deserializer.deserialize(struct(Brook.Event), event) do
+      {:ok, brook_event} -> process(brook_event, state)
+      {:error, reason} ->
+        Logger.error("Unable to deserialize event: #{inspect(event)}, error reason: #{inspect(reason)}")
+    end
   end
 
   defp merge(collection, key, %{} = value, state) do

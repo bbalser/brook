@@ -6,8 +6,6 @@ defmodule Brook.Event do
           author: Brook.author(),
           create_ts: pos_integer(),
           data: data(),
-          ack_ref: term(),
-          ack_data: term(),
           forwarded: boolean()
         }
 
@@ -16,8 +14,6 @@ defmodule Brook.Event do
             author: nil,
             create_ts: DateTime.utc_now() |> DateTime.to_unix(:millisecond),
             data: nil,
-            ack_ref: nil,
-            ack_data: nil,
             forwarded: false
 
   @spec update_data(Brook.Event.t(), (data() -> data())) :: Brook.Event.t()
@@ -31,8 +27,8 @@ defmodule Brook.Event do
     :ok
   end
 
-  @spec process(Brook.Event.t()) :: :ok | {:error, Brook.reason()}
-  def process(%Brook.Event{} = event) do
+  @spec process(Brook.Event.t() | term()) :: :ok | {:error, Brook.reason()}
+  def process(event) do
     GenServer.call({:via, Registry, {Brook.Registry, Brook.Server}}, {:process, event})
   end
 end
