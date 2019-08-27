@@ -36,7 +36,7 @@ defmodule Brook.Dispatcher.Default do
   member nodes of the `:brook_servers` process group after
   tagging the forwarded status of the event to `true`.
   """
-  @spec dispatch(Brook.Event.t() :: list(:ok)
+  @spec dispatch(Brook.Event.t()) :: list(:ok)
   def dispatch(%Brook.Event{} = event) do
     forwarded_event = %{event | forwarded: true}
 

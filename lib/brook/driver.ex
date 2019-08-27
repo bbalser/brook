@@ -41,7 +41,7 @@ defmodule Brook.Driver.Default do
   @doc """
   Takes event data and casts to the Brook server to process.
   """
-  @send_event(Brook.event_type(), Brook.Event.t()) :: :ok
+  @spec send_event(Brook.event_type(), Brook.Event.t()) :: :ok
   def send_event(_type, event) do
     GenServer.cast({:via, Registry, {Brook.Registry, Brook.Server}}, {:process, event})
 
