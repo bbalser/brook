@@ -105,8 +105,8 @@ defmodule Brook do
   defdelegate get(collection, key), to: Brook.Server
 
   @doc """
-  Returns the value of the given key and collection from the Brook view state or else
-  raises an exception.
+  Returns the value stored under the given key and collection from the
+  Brook view state or else raises an exception.
   """
   @spec get!(view_collection(), view_key()) :: view_value()
   def get!(collection, key) do
@@ -117,14 +117,16 @@ defmodule Brook do
   end
 
   @doc """
-  Returns a list of Brook events for the given key within a collection from the Brook view state,
-  wrapped in an `:ok` tuple or else an `:error` tuple with reason.
+  Returns a list of Brook events that produced the value stored under the given key
+  within a collection from the Brook view state, wrapped in an `:ok` tuple or else
+  an `:error` tuple with reason.
   """
   @spec get_events(view_collection(), view_key()) :: {:ok, list(Brook.Event.t())} | {:error, reason()}
   defdelegate get_events(collection, key), to: Brook.Server
 
   @doc """
-  Returns a list of Brook events for the given key within a collection or else raises an exception.
+  Returns a list of Brook events that produced the value stored under the given key
+  within a collection from the Brook view state or else raises an exception.
   """
   @spec get_events!(view_collection(), view_key()) :: list(Brook.Event.t())
   def get_events!(collection, key) do
@@ -135,17 +137,17 @@ defmodule Brook do
   end
 
   @doc """
-  Return all events saved to the Brook view state for a given collection, wrapped in an `:ok` tuple or
-  else an `:error` tuple with reason. Events are returned as a map where the keys are the keys used to
-  index the saved events and the values are any events saved under a given key.
+  Return all values saved to the Brook view state for a given collection, wrapped in an `:ok` tuple or
+  else an `:error` tuple with reason. Values are returned as a map where the keys are the keys used to
+  index the saved values and the values are anything saved under a given key based on processing events.
   """
   @spec get_all(view_collection()) :: {:ok, %{required(view_key()) => view_value()}} | {:error, reason()}
   defdelegate get_all(collection), to: Brook.Server
 
   @doc """
-  Return all events saved to the Brook view state for a given collection or else raises an exception.
-  Events are returned as a map where the keys are the keys used to index the saved events and the values
-  are any events saved under a given key.
+  Return all values saved to the Brook view state for a given collection or else raises an exception.
+  Values are returned as a map where the keys are the keys used to index the saved values and the values
+  are anything saved under a given key.
   """
   @spec get_all!(view_collection()) :: %{required(view_key()) => view_value()}
   def get_all!(collection) do
@@ -156,7 +158,7 @@ defmodule Brook do
   end
 
   @doc """
-  Returns a list of all events saved to a given collection of the Brook view state, indepentent of
+  Returns a list of all values saved to a given collection of the Brook view state, indepentent of
   the key used to index them. Results is wrapped in an `:ok` tuple or else an `:error` tuple with
   reason is returned.
   """
@@ -169,7 +171,7 @@ defmodule Brook do
   end
 
   @doc """
-  Returns a list of all events saved to a given collection of the Brook view state, independent of
+  Returns a list of all values saved to a given collection of the Brook view state, independent of
   the key used to index them, or else raises an exception.
   """
   @spec get_all_values!(view_collection()) :: [view_value()]

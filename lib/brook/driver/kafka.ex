@@ -23,7 +23,8 @@ defmodule Brook.Driver.Kafka do
   end
 
   @doc """
-
+  Initialize the Elsa supervision tree for the
+  consumer of the event stream topic.
   """
   @impl Supervisor
   def init(init_arg) do
@@ -55,6 +56,9 @@ defmodule Brook.Driver.Kafka do
     Supervisor.init(children, strategy: :one_for_one)
   end
 
+  @doc """
+  Send Brook event messages to the event stream topic.
+  """
   @impl Brook.Driver
   def send_event(type, message) do
     Elsa.produce_sync(get_topic(), {type, message}, name: @name)

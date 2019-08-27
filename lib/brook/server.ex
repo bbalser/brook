@@ -1,23 +1,56 @@
 defmodule Brook.Server do
+  @moduledoc """
+  Process event messages to and from the underlying event stream
+  message bus implementation. Interact with the application's
+  persisted view state of the event stream with getter and setter
+  functions to write and update events from the view state as well
+  as delete them.
+  """
   use GenServer
   require Logger
 
+  @doc """
+  Return an value, stored under a given key for a given
+  collection from the view state.
+  """
+  @spec get(Brook.view_collection(), Brook.view_key()) :: {:ok, Brook.view_value()} | {:error, Brook.reason()}
   def get(collection, key) do
     GenServer.call(via(), {:get, collection, key})
   end
 
-  def get_all(collection) do
+  @doc """
+  Return all values stored in the view state for a given
+  collection. Values are returned as a map where the keys
+  are the term used to store the value to the view state
+  and the values are the data produced from event processing.
+  """
+  @spec get_all(Brook.view_collection()) ::
+          {:ok, %{required(Brook.view_key()) => Brook.view_value()}} | {:error, Brook.reason()}
+  def(get_all(collection)) do
     GenServer.call(via(), {:get_all, collection})
   end
 
-  def get_events(collection, key) do
+  @doc """
+  Returns a list of Brook events that produced the value saved under
+  the given key within a collection from the application view state.
+  """
+  @spec get_events(Brook.view_collection(), Brook.view_key()) :: {:ok, list(Brook.Event.t())} | {:error, Brook.reason()}
+  def(get_events(collection, key)) do
     GenServer.call(via(), {:get_events, collection, key})
   end
 
+  @doc """
+  Start a Brook server and link it to the current process
+  """
+  @spec start_link(term()) :: {:ok, pid()}
   def start_link(%Brook.Config{} = config) do
     GenServer.start_link(__MODULE__, config, name: via())
   end
 
+  @doc """
+  Initialize a Brook server configuration.
+  """
+  @spec init(term()) :: {:ok, term()}
   def init(%Brook.Config{} = config) do
     config.dispatcher.init()
 
@@ -54,8 +87,13 @@ defmodule Brook.Server do
     case Brook.Event.Serializer.serialize(brook_event) do
       {:ok, serialized_event} ->
         :ok = apply(state.driver.module, :send_event, [type, serialized_event])
+
       {:error, reason} ->
-        Logger.error("Unable to send event: type(#{type}), author(#{author}), event(#{inspect(event)}), error reason: #{inspect(reason)}")
+        Logger.error(
+          "Unable to send event: type(#{type}), author(#{author}), event(#{inspect(event)}), error reason: #{
+            inspect(reason)
+          }"
+        )
     end
 
     {:reply, :ok, state}
@@ -95,7 +133,9 @@ defmodule Brook.Server do
 
   defp process(event, state) do
     case Brook.Event.Deserializer.deserialize(struct(Brook.Event), event) do
-      {:ok, brook_event} -> process(brook_event, state)
+      {:ok, brook_event} ->
+        process(brook_event, state)
+
       {:error, reason} ->
         Logger.error("Unable to deserialize event: #{inspect(event)}, error reason: #{inspect(reason)}")
     end
