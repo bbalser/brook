@@ -7,6 +7,7 @@ defprotocol Brook.Event.Serializer do
   converting to the given encoding, leaving the client the option to
   implement a custom serializer for specific struct types.
   """
+  
   @type type :: atom()
   @type reason :: term()
   @fallback_to_any true
