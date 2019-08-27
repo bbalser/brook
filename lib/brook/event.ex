@@ -53,6 +53,6 @@ defmodule Brook.Event do
   """
   @spec process(Brook.Event.t() | term()) :: :ok | {:error, Brook.reason()}
   def process(event) do
-    GenServer.call({:via, Registry, {Brook.Registry, Brook.Server}}, {:process, event})
+    GenServer.cast({:via, Registry, {Brook.Registry, Brook.Server}}, {:process, event})
   end
 end
