@@ -1,10 +1,20 @@
 defmodule Brook.Supervisor do
+  @moduledoc """
+  A Brook application supervisor, managing the process registry,
+  storage and driver module processes, and the server process.
+  """
   use Supervisor
 
+  @doc """
+  Start a Brook supervisor and link it to the current process.
+  """
   def start_link(opts) do
     Supervisor.start_link(__MODULE__, opts, name: __MODULE__)
   end
 
+  @doc """
+  Initialize the Brook supervisor with all necessary child processes.
+  """
   def init(opts) do
     config = Brook.Config.new(opts)
 
@@ -13,18 +23,10 @@ defmodule Brook.Supervisor do
         {Registry, [keys: :unique, name: Brook.Registry]},
         {config.storage.module, config.storage.init_arg},
         {Brook.Server, config},
-        {config.driver.module, config.driver.init_arg},
-        watcher(config)
+        {config.driver.module, config.driver.init_arg}
       ]
       |> List.flatten()
 
     Supervisor.init(children, strategy: :one_for_one)
-  end
-
-  defp watcher(config) do
-    case Brook.Config.has_watches?(config) do
-      true -> {Brook.Watcher, config}
-      false -> []
-    end
   end
 end

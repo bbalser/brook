@@ -1,27 +1,21 @@
 defmodule Brook.Driver.Kafka.Handler do
+  @moduledoc """
+  Implements the Elsa message handler behaviour for
+  the Brook Kafka driver.
+  """
   use Elsa.Consumer.MessageHandler
+  require Logger
 
+  @doc """
+  Takes a list of Kafka messages consumed by Elsa and
+  processes each with Brook.
+  """
+  @spec handle_messages([term()]) :: :ack
   def handle_messages(messages) do
     messages
-    |> Enum.each(fn message -> Brook.process(event(message)) end)
+    |> Enum.map(fn message -> message.value end)
+    |> Enum.each(&Brook.Event.process/1)
 
     :ack
-  end
-
-  def event(%{key: type, value: data} = message) do
-    %Brook.Event{
-      type: type,
-      data: Jason.decode!(data),
-      ack_ref: ack_ref(message),
-      ack_data: ack_data(message)
-    }
-  end
-
-  defp ack_ref(%{topic: topic, partition: partition, generation_id: generation_id}) do
-    %{topic: topic, partition: partition, generation_id: generation_id}
-  end
-
-  defp ack_data(%{offset: offset}) do
-    %{offset: offset}
   end
 end

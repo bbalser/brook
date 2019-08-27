@@ -19,12 +19,6 @@ defmodule Brook.IntegrationTest do
         ]
       },
       handlers: [Test.Event.Handler],
-      watches: [
-        keys: [{:all, :app_state}],
-        handler: Test.Update.Handler,
-        handler_init_arg: %{pid: self()},
-        interval: 1
-      ],
       storage: %{
         module: Brook.Storage.Redis,
         init_arg: [redix_args: [host: "localhost"], namespace: "test:snapshot"]
@@ -42,9 +36,9 @@ defmodule Brook.IntegrationTest do
   end
 
   test "brook happy path" do
-    Elsa.produce([localhost: 9092], "test", {"CREATE", Jason.encode!(%{"id" => 123, "name" => "George"})}, partition: 0)
-    Elsa.produce([localhost: 9092], "test", {"UPDATE", Jason.encode!(%{"id" => 123, "age" => 67})})
-    Elsa.produce([localhost: 9092], "test", {"UPDATE_APP_STATE", Jason.encode!(%{"name" => "app_state"})})
+    Brook.Event.send("CREATE", "testing", %{"id" => 123, "name" => "George"})
+    Brook.Event.send("UPDATE", "testing", %{"id" => 123, "age" => 67})
+    Brook.Event.send("UPDATE_APP_STATE", "testing", %{"name" => "app_state"})
 
     assert_async(timeout: 2_000, sleep_time: 200) do
       assert {:ok, %{"id" => 123, "name" => "George", "age" => 67}} == Brook.get(:all, 123)
@@ -56,7 +50,7 @@ defmodule Brook.IntegrationTest do
         :app_state => %{"name" => "app_state"}
       }
 
-      assert expected = Brook.get_all(:all)
+      assert expected == Brook.get_all!(:all)
     end
 
     assert_async(timeout: 2_000, sleep_time: 200) do
@@ -72,14 +66,10 @@ defmodule Brook.IntegrationTest do
       assert %{"id" => 123, "age" => 67} == update_event.data
     end
 
-    Elsa.produce([localhost: 9092], "test", {"DELETE", Jason.encode!(%{"id" => 123})})
+    Brook.Event.send("DELETE", "testing", %{"id" => 123})
 
     assert_async(timeout: 2_000, sleep_time: 200) do
       assert {:ok, nil} == Brook.get(:all, 123)
-    end
-
-    assert_async(timeout: 2_000, sleep_time: 200) do
-      assert_receive {:update, :all, :app_state, %{"name" => "app_state"}}
     end
   end
 

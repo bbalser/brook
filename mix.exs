@@ -6,6 +6,8 @@ defmodule Brook.MixProject do
       app: :brook,
       version: "0.1.0",
       elixir: "~> 1.8",
+      description: description(),
+      package: package(),
       elixirc_paths: elixirc_paths(Mix.env()),
       test_paths: test_paths(Mix.env()),
       start_permanent: Mix.env() == :prod,
@@ -26,6 +28,7 @@ defmodule Brook.MixProject do
       {:redix, "~> 0.10.2"},
       {:jason, "~> 1.1"},
       {:elsa, "~> 0.7.1"},
+      {:placebo, "~> 1.2", only: [:dev, :test]},
       {:assertions, "~> 0.14.1", only: [:test, :integration]},
       {:divo, "~> 1.1", only: [:dev, :integration]},
       {:divo_kafka, "~> 0.1.5", only: [:integration]},
@@ -38,4 +41,20 @@ defmodule Brook.MixProject do
 
   defp test_paths(:integration), do: ["test/integration"]
   defp test_paths(_), do: ["test/unit"]
+
+  defp package do
+    [
+      maintainers: ["Brian Balser"],
+      license: ["Apache 2.0"],
+      links: %{"GitHub" => "https://github.com/bbalser/brook"}
+    ]
+  end
+
+  defp description do
+    "Brook provides an event stream client interface for distributed applications
+    to communicate indirectly and asynchronously. Brook sends and receives
+    messages with the event stream (typically a message queue service) via a driver
+    module and persists an application-specific view of the event stream via a
+    storage module (defaulting to ETS)."
+  end
 end

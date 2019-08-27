@@ -32,6 +32,10 @@ defmodule Test.Event.Handler do
     {:merge, :all, :app_state, data}
   end
 
+  def handle_event(%Brook.Event{type: "UNKNOWN"}) do
+    :discard
+  end
+
   defp get_id(%{} = data), do: data["id"]
 
   defp get_id(data) when is_list(data) do

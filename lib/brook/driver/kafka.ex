@@ -1,14 +1,31 @@
 defmodule Brook.Driver.Kafka do
+  @moduledoc """
+  Implements the `Brook.Driver` behaviour for using Kafka
+  as the message bus underlying the event stream.
+
+  Brook's Kafka driver uses the (Elsa)[https://github.com/bbalser/elsa]
+  library for subscribing to and sending messages to a Kafka
+  topic handling event stream communication between distributed
+  applications.
+  """
   @behaviour Brook.Driver
   use Supervisor
+  require Logger
 
   @name :brook_driver_elsa
 
+  @doc """
+  Start `Brook.Driver` and link to the current process
+  """
   @impl Brook.Driver
   def start_link(init_arg) do
     Supervisor.start_link(__MODULE__, init_arg)
   end
 
+  @doc """
+  Initialize the Elsa supervision tree for the
+  consumer of the event stream topic.
+  """
   @impl Supervisor
   def init(init_arg) do
     topic = Keyword.fetch!(init_arg, :topic)
@@ -39,20 +56,12 @@ defmodule Brook.Driver.Kafka do
     Supervisor.init(children, strategy: :one_for_one)
   end
 
+  @doc """
+  Send Brook event messages to the event stream topic.
+  """
   @impl Brook.Driver
-  def ack(%{topic: topic, partition: partition, generation_id: generation_id}, ack_data) do
-    max_offset =
-      ack_data
-      |> Enum.map(fn ack -> ack.offset end)
-      |> Enum.max()
-
-    Elsa.Group.Manager.ack(:brook_driver_elsa, topic, partition, generation_id, max_offset)
-  end
-
-  @impl Brook.Driver
-  def send_event(type, data) do
-    topic = get_topic()
-    Elsa.produce_sync(topic, {type, Jason.encode!(data)}, name: @name)
+  def send_event(type, message) do
+    Elsa.produce_sync(get_topic(), {type, message}, name: @name)
   end
 
   defp store_topic(topic) do
