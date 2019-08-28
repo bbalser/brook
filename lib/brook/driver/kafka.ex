@@ -13,6 +13,8 @@ defmodule Brook.Driver.Kafka do
   require Logger
 
   @name :brook_driver_elsa
+  @send_retry_wait 100
+  @send_retry_tries 10
 
   @doc """
   Start `Brook.Driver` and link to the current process
@@ -61,6 +63,25 @@ defmodule Brook.Driver.Kafka do
   """
   @impl Brook.Driver
   def send_event(type, message) do
+    send_event(type, message, @send_retry_tries)
+  end
+
+  defp send_event(type, message, 1) do
+    produce_to_kafka(type, message)
+  end
+
+  defp send_event(type, message, retries) do
+    case produce_to_kafka(type, message) do
+      {:error, _message, _non_sent} ->
+        Process.sleep(@send_retry_wait)
+        send_event(type, message, retries - 1)
+
+      result ->
+        result
+    end
+  end
+
+  defp produce_to_kafka(type, message) do
     Elsa.produce_sync(get_topic(), {type, message}, name: @name)
   end
 
