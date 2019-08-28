@@ -4,7 +4,7 @@ defmodule Brook.MixProject do
   def project do
     [
       app: :brook,
-      version: "0.1.1",
+      version: "0.1.2",
       elixir: "~> 1.8",
       description: description(),
       package: package(),
@@ -25,8 +25,8 @@ defmodule Brook.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
+      {:brook_serializer, "~> 1.0"},
       {:redix, "~> 0.10.2"},
-      {:jason, "~> 1.1"},
       {:elsa, "~> 0.7.1"},
       {:placebo, "~> 1.2", only: [:dev, :test]},
       {:assertions, "~> 0.14.1", only: [:test, :integration]},
@@ -52,7 +52,7 @@ defmodule Brook.MixProject do
   end
 
   defp description do
-    "Brook provides an event stream client interface for distributed applications. 
+    "Brook provides an event stream client interface for distributed applications.
     Brook sends and receives messages with the event stream via a driver
     module and persists an application-specific view of the event stream via a
     storage module."

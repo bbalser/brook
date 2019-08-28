@@ -84,7 +84,7 @@ defmodule Brook.Server do
       data: event
     }
 
-    case Brook.Event.Serializer.serialize(brook_event) do
+    case Brook.Serializer.serialize(brook_event) do
       {:ok, serialized_event} ->
         :ok = apply(state.driver.module, :send_event, [type, serialized_event])
 
@@ -132,7 +132,7 @@ defmodule Brook.Server do
   end
 
   defp process(event, state) do
-    case Brook.Event.Deserializer.deserialize(struct(Brook.Event), event) do
+    case Brook.Deserializer.deserialize(struct(Brook.Event), event) do
       {:ok, brook_event} ->
         process(brook_event, state)
 

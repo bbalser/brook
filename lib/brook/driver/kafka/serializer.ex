@@ -1,20 +1,9 @@
 require Protocol
 Protocol.derive(Jason.Encoder, Brook.Event)
 
-defimpl Brook.Event.Serializer, for: Any do
+defimpl Brook.Serializer, for: Brook.Event do
   @moduledoc """
-  Provide a default implementation for the `Brook.Event.Serializer`
-  protocol that will encode the supplied term to json.
-  """
-
-  def serialize(data) do
-    Jason.encode(data)
-  end
-end
-
-defimpl Brook.Event.Serializer, for: Brook.Event do
-  @moduledoc """
-  Implement the `Brook.Event.Serializer` protocol for the
+  Implement the `Brook.Serializer` protocol for the
   `Brook.Event` struct type.
   """
 
@@ -26,7 +15,7 @@ defimpl Brook.Event.Serializer, for: Brook.Event do
   end
 
   defp serialize_data(message, data) do
-    case Brook.Event.Serializer.serialize(data) do
+    case Brook.Serializer.serialize(data) do
       {:ok, value} -> {:ok, Map.put(message, "data", value)}
       error_result -> error_result
     end
@@ -42,28 +31,9 @@ defimpl Brook.Event.Serializer, for: Brook.Event do
   defp encode({:error, _reason} = error), do: error
 end
 
-defimpl Brook.Event.Deserializer, for: Any do
+defimpl Brook.Deserializer, for: Brook.Event do
   @moduledoc """
-  Provide a default implementation for the `Brook.Event.Deserializer`
-  protocol that will decode the supplied json to an instance of
-  the provided struct.
-  """
-
-  def deserialize(:undefined, data) do
-    Jason.decode(data)
-  end
-
-  def deserialize(%struct_module{}, data) do
-    case Jason.decode(data, keys: :atoms) do
-      {:ok, decoded_json} -> {:ok, struct(struct_module, decoded_json)}
-      error_result -> error_result
-    end
-  end
-end
-
-defimpl Brook.Event.Deserializer, for: Brook.Event do
-  @moduledoc """
-  Implement the `Brook.Event.Deserializer` protocol for the
+  Implement the `Brook.Deserializer` protocol for the
   `Brook.Event` struct type.
   """
 
@@ -89,7 +59,7 @@ defimpl Brook.Event.Deserializer, for: Brook.Event do
   defp get_struct({:error, _reason} = error), do: error
 
   defp deserialize_data({:ok, data_struct, decoded_json}) do
-    case Brook.Event.Deserializer.deserialize(data_struct, decoded_json.data) do
+    case Brook.Deserializer.deserialize(data_struct, decoded_json.data) do
       {:ok, value} -> {:ok, Map.put(decoded_json, :data, value)}
       error_result -> error_result
     end
