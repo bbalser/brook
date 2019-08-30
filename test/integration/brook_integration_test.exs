@@ -5,6 +5,7 @@ defmodule Brook.IntegrationTest do
 
   setup do
     {:ok, redix} = Redix.start_link(host: "localhost")
+    Redix.command!(redix, ["FLUSHALL"])
 
     config = [
       driver: %{
@@ -54,7 +55,7 @@ defmodule Brook.IntegrationTest do
     end
 
     assert_async(timeout: 2_000, sleep_time: 200) do
-      {:ok, events} = Brook.get_events(:all, 123)
+      {:ok, events} = Brook.get_events(:all, 123) |> IO.inspect(label: "all the events")
       assert 2 == length(events)
 
       create_event = List.first(events)
@@ -71,6 +72,21 @@ defmodule Brook.IntegrationTest do
     assert_async(timeout: 2_000, sleep_time: 200) do
       assert {:ok, nil} == Brook.get(:all, 123)
     end
+  end
+
+  test "should be able to view state in event handler" do
+    Brook.Event.send("CREATE", "testing", %{"id" => 123, "name" => "George"})
+    Brook.Event.send("READ_VIEW", "testing", %{"id" => 123})
+
+    [{pid, _value}] = Registry.lookup(Brook.Registry, Brook.Server)
+
+    alive? = Process.alive?(pid)
+    assert true == alive?
+
+    Process.sleep(5_000)
+
+    alive? = Process.alive?(pid)
+    assert true == alive?
   end
 
   defp kill_and_wait(pid, timeout \\ 1_000) do

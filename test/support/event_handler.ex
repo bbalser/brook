@@ -36,6 +36,12 @@ defmodule Test.Event.Handler do
     :discard
   end
 
+  def handle_event(%Brook.Event{type: "READ_VIEW", data: data}) do
+    id = get_id(data)
+    value = Brook.get(:all, id)
+    :discard
+  end
+
   defp get_id(%{} = data), do: data["id"]
 
   defp get_id(data) when is_list(data) do

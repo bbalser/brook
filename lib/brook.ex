@@ -87,6 +87,14 @@ defmodule Brook do
     defexception [:message]
   end
 
+  defmodule Uninitialized do
+    @moduledoc """
+    An exception that is raised when calls are made to retrieve values
+    from the view state, but Brook is Uninitialized.
+    """
+    defexception [:message]
+  end
+
   @doc """
   Starts a Brook process linked to the current process.
   """
@@ -102,7 +110,10 @@ defmodule Brook do
   `:ok` tuple or else an `:error` tuple with a reason.
   """
   @spec get(view_collection(), view_key()) :: {:ok, view_value()} | {:error, reason()}
-  defdelegate get(collection, key), to: Brook.Server
+  def get(collection, key) do
+    storage = Brook.Config.storage()
+    apply(storage.module, :get, [collection, key])
+  end
 
   @doc """
   Returns the value stored under the given key and collection from the
@@ -122,7 +133,10 @@ defmodule Brook do
   an `:error` tuple with reason.
   """
   @spec get_events(view_collection(), view_key()) :: {:ok, list(Brook.Event.t())} | {:error, reason()}
-  defdelegate get_events(collection, key), to: Brook.Server
+  def get_events(collection, key) do
+    storage = Brook.Config.storage()
+    apply(storage.module, :get_events, [collection, key])
+  end
 
   @doc """
   Returns a list of Brook events that produced the value stored under the given key
@@ -142,7 +156,10 @@ defmodule Brook do
   index the saved values and the values are anything saved under a given key based on processing events.
   """
   @spec get_all(view_collection()) :: {:ok, %{required(view_key()) => view_value()}} | {:error, reason()}
-  defdelegate get_all(collection), to: Brook.Server
+  def get_all(collection) do
+    storage = Brook.Config.storage()
+    apply(storage.module, :get_all, [collection])
+  end
 
   @doc """
   Return all values saved to the Brook view state for a given collection or else raises an exception.

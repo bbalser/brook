@@ -16,7 +16,9 @@ defmodule Brook.Supervisor do
   Initialize the Brook supervisor with all necessary child processes.
   """
   def init(opts) do
-    config = Brook.Config.new(opts)
+    config =
+      Brook.Config.new(opts)
+      |> Brook.Config.store()
 
     children =
       [
