@@ -40,18 +40,20 @@ defmodule Brook.Storage do
   Return a value from the persisted view state stored within a collection and
   identified by a key.
   """
-  @callback get(Brook.view_collection(), Brook.view_key()) :: Brook.view_value()
+  @callback get(Brook.view_collection(), Brook.view_key()) :: {:ok, Brook.view_value()} | {:error, Brook.reason()}
 
   @doc """
   Return all values saved to the application view state within the storage system
   under a given collection. Events are returned as a map with the identifying keys as keys and the
   saved values as values.
   """
-  @callback get_all(Brook.view_collection()) :: %{required(Brook.view_key()) => Brook.view_value()}
+  @callback get_all(Brook.view_collection()) ::
+              {:ok, %{required(Brook.view_key()) => Brook.view_value()}} | {:error, Brook.reason()}
 
   @doc """
   Return a list of events that produced a value saved to the application view state
   within the storage system under a given collection and idetifying key.
   """
-  @callback get_events(Brook.view_collection(), Brook.view_key()) :: list(Brook.Event.t())
+  @callback get_events(Brook.view_collection(), Brook.view_key()) ::
+              {:ok, list(Brook.Event.t())} | {:error, Brook.reason()}
 end

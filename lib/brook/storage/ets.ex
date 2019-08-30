@@ -71,12 +71,13 @@ defmodule Brook.Storage.Ets do
       [{_key, value, _events}] -> value
       _ -> nil
     end
+    |> ok()
     |> reply(state)
   end
 
   @impl GenServer
   def handle_call({:get_events, collection, key}, _from, state) do
-    {:reply, get_existing_events({collection, key}), state}
+    {:reply, get_existing_events({collection, key}) |> ok(), state}
   end
 
   @impl GenServer
@@ -86,6 +87,7 @@ defmodule Brook.Storage.Ets do
       {key, value}
     end)
     |> Enum.into(%{})
+    |> ok()
     |> reply(state)
   end
 
@@ -96,5 +98,6 @@ defmodule Brook.Storage.Ets do
     end
   end
 
+  defp ok(value), do: {:ok, value}
   defp reply(value, state), do: {:reply, value, state}
 end

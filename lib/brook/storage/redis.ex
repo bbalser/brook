@@ -90,6 +90,7 @@ defmodule Brook.Storage.Redis do
         :erlang.binary_to_term(value)
         |> Map.get(:value)
     end
+    |> ok()
     |> reply(state)
   end
 
@@ -106,6 +107,7 @@ defmodule Brook.Storage.Redis do
         |> Enum.map(fn %{key: key, value: value} -> {key, value} end)
         |> Enum.into(%{})
     end
+    |> ok()
     |> reply(state)
   end
 
@@ -115,9 +117,11 @@ defmodule Brook.Storage.Redis do
       nil -> nil
       value -> Enum.map(value, &:erlang.binary_to_term(&1))
     end
+    |> ok()
     |> reply(state)
   end
 
+  defp ok(value), do: {:ok, value}
   defp multiget(keys, host), do: Redix.command!(host, ["MGET" | keys])
   defp key(state, collection, key), do: "#{state.namespace}:#{collection}:#{key}"
   defp events_key(state, collection, key), do: "#{state.namespace}:#{collection}:#{key}:events"
