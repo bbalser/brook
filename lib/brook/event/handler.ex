@@ -34,6 +34,7 @@ defmodule Brook.Event.Handler do
     quote do
       @behaviour Brook.Event.Handler
       @before_compile Brook.Event.Handler
+      import Brook.ViewState, only: [create: 3, merge: 3, delete: 2]
     end
   end
 

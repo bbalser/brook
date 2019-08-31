@@ -55,7 +55,7 @@ defmodule Brook.IntegrationTest do
     end
 
     assert_async(timeout: 2_000, sleep_time: 200) do
-      {:ok, events} = Brook.get_events(:all, 123) |> IO.inspect(label: "all the events")
+      {:ok, events} = Brook.get_events(:all, 123)
       assert 2 == length(events)
 
       create_event = List.first(events)

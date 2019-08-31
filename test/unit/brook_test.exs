@@ -25,7 +25,6 @@ defmodule BrookTest do
   test "create entry in store" do
     :ok = Brook.Event.process(event("CREATE", %{"id" => 123, "name" => "George"}))
 
-
     assert_async(timeout: 1_000, sleep_time: 100) do
       assert {:ok, %{"id" => 123, "name" => "George"}} == Brook.get(:all, 123)
     end
@@ -75,7 +74,7 @@ defmodule BrookTest do
 
     assert_async(timeout: 1_000, sleep_time: 100) do
       {:ok, actual} = Brook.get(:all, 1)
-      assert key_equals([id: 1, name: "Jeff", age: 22, married: true], actual)
+      assert keyword_equals([id: 1, name: "Jeff", age: 22, married: true], actual)
     end
   end
 
@@ -84,7 +83,7 @@ defmodule BrookTest do
 
     assert_async(timeout: 1_000, sleep_time: 100) do
       {:ok, actual} = Brook.get(:all, 1)
-      assert key_equals([id: 1, age: 22, married: true], actual)
+      assert keyword_equals([id: 1, age: 22, married: true], actual)
     end
   end
 
@@ -121,11 +120,11 @@ defmodule BrookTest do
     |> Map.merge(Enum.into(opts, %{}))
   end
 
-  defp key_equals(left, right) when is_nil(left) or is_nil(right) do
+  defp keyword_equals(left, right) when is_nil(left) or is_nil(right) do
     false
   end
 
-  defp key_equals(left, right) do
+  defp keyword_equals(left, right) do
     Keyword.equal?(left, right)
   end
 end

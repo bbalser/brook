@@ -110,10 +110,7 @@ defmodule Brook do
   `:ok` tuple or else an `:error` tuple with a reason.
   """
   @spec get(view_collection(), view_key()) :: {:ok, view_value()} | {:error, reason()}
-  def get(collection, key) do
-    storage = Brook.Config.storage()
-    apply(storage.module, :get, [collection, key])
-  end
+  defdelegate get(collection, key), to: Brook.ViewState
 
   @doc """
   Returns the value stored under the given key and collection from the
@@ -156,10 +153,7 @@ defmodule Brook do
   index the saved values and the values are anything saved under a given key based on processing events.
   """
   @spec get_all(view_collection()) :: {:ok, %{required(view_key()) => view_value()}} | {:error, reason()}
-  def get_all(collection) do
-    storage = Brook.Config.storage()
-    apply(storage.module, :get_all, [collection])
-  end
+  defdelegate get_all(collection), to: Brook.ViewState
 
   @doc """
   Return all values saved to the Brook view state for a given collection or else raises an exception.

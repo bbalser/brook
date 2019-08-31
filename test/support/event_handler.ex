@@ -38,7 +38,7 @@ defmodule Test.Event.Handler do
 
   def handle_event(%Brook.Event{type: "READ_VIEW", data: data}) do
     id = get_id(data)
-    value = Brook.get(:all, id)
+    Brook.get(:all, id)
     :discard
   end
 

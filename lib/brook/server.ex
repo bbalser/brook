@@ -22,10 +22,8 @@ defmodule Brook.Server do
   """
   @spec init(term()) :: {:ok, term()}
   def init(%Brook.Config{} = config) do
+    Brook.ViewState.init()
     config.dispatcher.init()
-
-    :ets.new(@table, [:set, :protected, :named_table])
-    :ets.insert(@table, {:config, config})
 
     {:ok, config}
   end
@@ -63,30 +61,41 @@ defmodule Brook.Server do
   end
 
   defp process(%Brook.Event{forwarded: false} = event, state) do
+    Process.put(:brook_current_event, event)
+
     Enum.each(state.event_handlers, fn handler ->
       case apply(handler, :handle_event, [event]) do
         {:create, collection, key, value} ->
-          apply(state.storage.module, :persist, [event, collection, key, value])
+          Brook.ViewState.create(collection, key, value)
 
         {:merge, collection, key, value} ->
-          merged_value = merge(collection, key, value, state)
-          apply(state.storage.module, :persist, [event, collection, key, merged_value])
+          Brook.ViewState.merge(collection, key, value)
 
         {:delete, collection, key} ->
-          apply(state.storage.module, :delete, [collection, key])
+          Brook.ViewState.delete(collection, key)
 
         :discard ->
           nil
+
+        :ok ->
+          nil
       end
     end)
+    Brook.ViewState.commit()
 
     apply(state.dispatcher, :dispatch, [event])
+    Process.delete(:brook_current_event)
   end
 
   defp process(%Brook.Event{forwarded: true} = event, state) do
+    Process.put(:brook_current_event, event)
+
     Enum.each(state.event_handlers, fn handler ->
       apply(handler, :handle_event, [event])
     end)
+
+    Brook.ViewState.rollback()
+    Process.delete(:brook_current_event)
   end
 
   defp process(event, state) do
@@ -96,26 +105,6 @@ defmodule Brook.Server do
 
       {:error, reason} ->
         Logger.error("Unable to deserialize event: #{inspect(event)}, error reason: #{inspect(reason)}")
-    end
-  end
-
-  defp merge(collection, key, %{} = value, state) do
-    do_merge(collection, key, value, &Map.merge(&1, value), state)
-  end
-
-  defp merge(collection, key, value, state) when is_list(value) do
-    do_merge(collection, key, value, &Keyword.merge(&1, value), state)
-  end
-
-  defp merge(collection, key, function, state) when is_function(function) do
-    do_merge(collection, key, nil, function, state)
-  end
-
-  defp do_merge(collection, key, default, function, state) when is_function(function, 1) do
-    case apply(state.storage.module, :get, [collection, key]) do
-      {:ok, nil} -> default
-      {:ok, old_value} -> function.(old_value)
-      {:error, reason} -> raise RuntimeError, message: inspect(reason)
     end
   end
 
