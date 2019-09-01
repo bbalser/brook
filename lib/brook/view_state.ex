@@ -26,9 +26,11 @@ defmodule Brook.ViewState do
     e -> raise Brook.Uninitialized, message: inspect(e)
   end
 
-  @spec get_all(Brook.view_collection()) :: {:ok, %{required(Brook.view_key()) => Brook.view_value()}} | {:error, Brook.reason()}
+  @spec get_all(Brook.view_collection()) ::
+          {:ok, %{required(Brook.view_key()) => Brook.view_value()}} | {:error, Brook.reason()}
   def get_all(collection) do
     storage = Brook.Config.storage()
+
     with {:ok, persisted_entries} <- apply(storage.module, :get_all, [collection]),
          cached_entries <- get_all_cached_entries(collection) do
       {:ok, Map.merge(persisted_entries, cached_entries)}

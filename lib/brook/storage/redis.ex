@@ -16,27 +16,68 @@ defmodule Brook.Storage.Redis do
 
   @impl Brook.Storage
   def persist(event, collection, key, value) do
-    GenServer.call(via(), {:persist, event, collection, key, value})
+    namespace = state(:namespace)
+    redix = state(:redix)
+    Logger.debug(fn -> "#{__MODULE__}: persisting #{collection}:#{key}:#{inspect(value)} to redis" end)
+
+    with {:ok, "OK"} <-
+           redis_set(redix, key(namespace, collection, key), :erlang.term_to_binary(%{key: key, value: value})),
+         {:ok, _count} <-
+           redis_append(redix, events_key(namespace, collection, key), :erlang.term_to_binary(event, compressed: 9)) do
+      :ok
+    end
+  rescue
+    ArgumentError -> {:error, not_initialized_exception()}
   end
 
   @impl Brook.Storage
   def delete(collection, key) do
-    GenServer.call(via(), {:delete, collection, key})
+    namespace = state(:namespace)
+
+    case redis_delete(state(:redix), [key(namespace, collection, key), events_key(namespace, collection, key)]) do
+      {:ok, _count} -> :ok
+      error_result -> error_result
+    end
   end
 
   @impl Brook.Storage
   def get(collection, key) do
-    GenServer.call(via(), {:get, collection, key})
+    case redis_get(state(:redix), key(state(:namespace), collection, key)) do
+      {:ok, nil} ->
+        {:ok, nil}
+
+      {:ok, value} ->
+        :erlang.binary_to_term(value)
+        |> Map.get(:value)
+        |> ok()
+
+      error_result ->
+        error_result
+    end
   end
 
   @impl Brook.Storage
   def get_all(collection) do
-    GenServer.call(via(), {:get_all, collection})
+    namespace = state(:namespace)
+    redix = state(:redix)
+
+    with {:ok, keys} <- redis_keys(redix, key(namespace, collection, "*")),
+         filtered_keys <- Enum.filter(keys, fn key -> !String.ends_with?(key, ":events") end),
+         {:ok, binary_values} <- redis_multiget(redix, filtered_keys) do
+      binary_values
+      |> Enum.map(&:erlang.binary_to_term/1)
+      |> Enum.map(fn %{key: key, value: value} -> {key, value} end)
+      |> Enum.into(%{})
+      |> ok()
+    end
   end
 
   @impl Brook.Storage
   def get_events(collection, key) do
-    GenServer.call(via(), {:get_events, collection, key})
+    case redis_get_all(state(:redix), events_key(state(:namespace), collection, key)) do
+      {:ok, value} -> {:ok, Enum.map(value, &:erlang.binary_to_term(&1))}
+      error_result -> error_result
+    end
   end
 
   @impl Brook.Storage
@@ -49,82 +90,42 @@ defmodule Brook.Storage.Redis do
     redix_args = Keyword.fetch!(args, :redix_args)
     namespace = Keyword.fetch!(args, :namespace)
 
+    :ets.new(__MODULE__, [:set, :protected, :named_table])
+    :ets.insert(__MODULE__, {:namespace, namespace})
+
     {:ok, %{namespace: namespace}, {:continue, {:init, redix_args}}}
   end
 
   @impl GenServer
   def handle_continue({:init, redix_args}, state) do
     {:ok, pid} = Redix.start_link(redix_args)
+    :ets.insert(__MODULE__, {:redix, pid})
     {:noreply, Map.put(state, :redix, pid)}
   end
 
-  @impl GenServer
-  def handle_call({:persist, event, collection, key, value}, _from, state) do
-    Logger.debug(fn -> "#{__MODULE__}: persisting #{collection}:#{key}:#{inspect(value)} to redis" end)
-
-    Redix.command!(state.redix, ["SET", key(state, collection, key), :erlang.term_to_binary(%{key: key, value: value})])
-
-    Redix.command!(state.redix, [
-      "RPUSH",
-      events_key(state, collection, key),
-      :erlang.term_to_binary(event, compressed: 9)
-    ])
-
-    reply(:ok, state)
-  end
-
-  @impl GenServer
-  def handle_call({:delete, collection, key}, _from, state) do
-    Redix.command!(state.redix, ["DEL", key(state, collection, key), events_key(state, collection, key)])
-
-    reply(:ok, state)
-  end
-
-  @impl GenServer
-  def handle_call({:get, collection, key}, _from, state) do
-    case Redix.command!(state.redix, ["GET", key(state, collection, key)]) do
-      nil ->
-        nil
-
-      value ->
-        :erlang.binary_to_term(value)
-        |> Map.get(:value)
+  defp state(key) do
+    case :ets.lookup(__MODULE__, key) do
+      [] -> raise not_initialized_exception()
+      [{^key, value}] -> value
     end
-    |> ok()
-    |> reply(state)
   end
 
-  @impl GenServer
-  def handle_call({:get_all, collection}, _from, state) do
-    case Redix.command!(state.redix, ["KEYS", "#{state.namespace}:#{collection}:*"]) do
-      [] ->
-        %{}
-
-      keys ->
-        Enum.filter(keys, fn key -> !String.ends_with?(key, ":events") end)
-        |> multiget(state.redix)
-        |> Enum.map(&:erlang.binary_to_term(&1))
-        |> Enum.map(fn %{key: key, value: value} -> {key, value} end)
-        |> Enum.into(%{})
-    end
-    |> ok()
-    |> reply(state)
+  defp not_initialized_exception() do
+    Brook.Uninitialized.exception(message: "#{__MODULE__} is not initialized yet!")
   end
 
-  @impl GenServer
-  def handle_call({:get_events, collection, key}, _from, state) do
-    case Redix.command!(state.redix, ["LRANGE", events_key(state, collection, key), 0, -1]) do
-      nil -> nil
-      value -> Enum.map(value, &:erlang.binary_to_term(&1))
-    end
-    |> ok()
-    |> reply(state)
-  end
+  defp redis_get(redix, key), do: Redix.command(redix, ["GET", key])
+  defp redis_get_all(redix, key), do: Redix.command(redix, ["LRANGE", key, 0, -1])
+  defp redis_set(redix, key, value), do: Redix.command(redix, ["SET", key, value])
+  defp redis_append(redix, key, value), do: Redix.command(redix, ["RPUSH", key, value])
+  defp redis_keys(redix, key), do: Redix.command(redix, ["KEYS", key])
+  defp redis_delete(redix, keys), do: Redix.command(redix, ["DEL" | keys])
+
+  defp redis_multiget(_redix, []), do: []
+  defp redis_multiget(redix, keys), do: Redix.command(redix, ["MGET" | keys])
 
   defp ok(value), do: {:ok, value}
-  defp multiget(keys, host), do: Redix.command!(host, ["MGET" | keys])
-  defp key(state, collection, key), do: "#{state.namespace}:#{collection}:#{key}"
-  defp events_key(state, collection, key), do: "#{state.namespace}:#{collection}:#{key}:events"
+  defp key(namespace, collection, key), do: "#{namespace}:#{collection}:#{key}"
+  defp events_key(namespace, collection, key), do: "#{namespace}:#{collection}:#{key}:events"
   defp via(), do: {:via, Registry, {Brook.Registry, __MODULE__}}
-  defp reply(reply_value, state), do: {:reply, reply_value, state}
 end

@@ -81,6 +81,7 @@ defmodule Brook.Server do
           nil
       end
     end)
+
     Brook.ViewState.commit()
 
     apply(state.dispatcher, :dispatch, [event])

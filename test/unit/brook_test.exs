@@ -25,7 +25,7 @@ defmodule BrookTest do
   test "create entry in store" do
     :ok = Brook.Event.process(event("CREATE", %{"id" => 123, "name" => "George"}))
 
-    assert_async(timeout: 1_000, sleep_time: 100) do
+    assert_async do
       assert {:ok, %{"id" => 123, "name" => "George"}} == Brook.get(:all, 123)
     end
   end
@@ -35,7 +35,9 @@ defmodule BrookTest do
     event = event("CREATE", %{"id" => 456, "name" => "Bob"})
     :ok = Brook.Event.process(event)
 
-    assert_called Brook.Dispatcher.Default.dispatch(event)
+    assert_async do
+      assert_called Brook.Dispatcher.Default.dispatch(event)
+    end
   end
 
   test "does not call storage module when forwarded is true" do
@@ -48,7 +50,9 @@ defmodule BrookTest do
     Brook.Event.process(event("CREATE", %{"id" => 123, "name" => "George"}))
     Brook.Event.process(event("DELETE", %{"id" => 123}))
 
-    assert {:ok, nil} == Brook.get(:all, 123)
+    assert_async do
+      assert {:ok, nil} == Brook.get(:all, 123)
+    end
   end
 
   test "merge map into view state" do
@@ -72,7 +76,7 @@ defmodule BrookTest do
     Brook.Event.process(event("CREATE", id: 1, name: "Jeff", age: 21))
     Brook.Event.process(event("UPDATE", id: 1, age: 22, married: true))
 
-    assert_async(timeout: 1_000, sleep_time: 100) do
+    assert_async do
       {:ok, actual} = Brook.get(:all, 1)
       assert keyword_equals([id: 1, name: "Jeff", age: 22, married: true], actual)
     end
@@ -81,7 +85,7 @@ defmodule BrookTest do
   test "merge keyword list into not existent state" do
     Brook.Event.process(event("UPDATE", id: 1, age: 22, married: true))
 
-    assert_async(timeout: 1_000, sleep_time: 100) do
+    assert_async do
       {:ok, actual} = Brook.get(:all, 1)
       assert keyword_equals([id: 1, age: 22, married: true], actual)
     end
@@ -91,7 +95,7 @@ defmodule BrookTest do
     Brook.Event.process(event("CREATE", %{"id" => 1, "total" => 10}))
     Brook.Event.process(event("ADD", %{"id" => 1, "add" => 5}))
 
-    assert_async(timeout: 1_000, sleep_time: 100) do
+    assert_async do
       {:ok, actual} = Brook.get(:all, 1)
       assert %{"id" => 1, "total" => 15} == actual
     end
