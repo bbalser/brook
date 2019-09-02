@@ -84,6 +84,12 @@ defmodule Brook.ViewStateTest do
         assert Enum.at(events, 1).type == "merge"
       end
     end
+
+    test "cannot be called outside of event handler" do
+      assert_raise Brook.InvalidEvent, fn ->
+        Brook.ViewState.create("people", "key1", "value1")
+      end
+    end
   end
 
   describe "merge" do
@@ -93,6 +99,12 @@ defmodule Brook.ViewStateTest do
 
       assert_async do
         assert %{"id" => 1, "name" => "joe", "age" => 21} == Brook.get!(:data, 1)
+      end
+    end
+
+    test "cannot be called outside of event handler" do
+      assert_raise Brook.InvalidEvent, fn ->
+        Brook.ViewState.merge("people", "key1", %{one: 1})
       end
     end
   end
@@ -118,6 +130,12 @@ defmodule Brook.ViewStateTest do
 
       assert_async do
         assert %{cached_value: nil} == Brook.get!(:cached_read, 5)
+      end
+    end
+
+    test "cannot be called outside of event handler" do
+      assert_raise Brook.InvalidEvent, fn ->
+        Brook.ViewState.delete("people", "key1")
       end
     end
   end

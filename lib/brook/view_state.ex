@@ -39,6 +39,7 @@ defmodule Brook.ViewState do
 
   @spec create(Brook.view_collection(), Brook.view_key(), Brook.view_value()) :: :ok
   def create(collection, key, value) do
+    assert_event()
     :ets.insert(@table, {{collection, key}, value})
     :ok
   end
@@ -61,6 +62,7 @@ defmodule Brook.ViewState do
 
   @spec delete(Brook.view_collection(), Brook.view_key()) :: :ok
   def delete(collection, key) do
+    assert_event()
     :ets.insert(@table, {{collection, key}, @delete_marker})
     :ok
   end
@@ -81,6 +83,13 @@ defmodule Brook.ViewState do
     :ets.delete_all_objects(@table)
   end
 
+  defp assert_event() do
+    case Process.get(:brook_current_event) != nil do
+      false -> raise Brook.InvalidEvent, message: "No Event Found: can only be called in Brook.Event.Handler implementation"
+      true -> true
+    end
+  end
+
   defp persist(storage, _event, collection, key, @delete_marker) do
     :ok = apply(storage.module, :delete, [collection, key])
   end
@@ -90,6 +99,7 @@ defmodule Brook.ViewState do
   end
 
   defp do_merge(collection, key, default, function) when is_function(function, 1) do
+    assert_event()
     storage = Brook.Config.storage()
 
     case apply(storage.module, :get, [collection, key]) do

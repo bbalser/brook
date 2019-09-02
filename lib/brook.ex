@@ -95,6 +95,13 @@ defmodule Brook do
     defexception [:message]
   end
 
+  defmodule InvalidEvent do
+    @moduledoc """
+    An exception that is raised when no valid event can be found.
+    """
+    defexception [:message]
+  end
+
   @doc """
   Starts a Brook process linked to the current process.
   """
