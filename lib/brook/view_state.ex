@@ -102,7 +102,7 @@ defmodule Brook.ViewState do
     assert_event()
     storage = Brook.Config.storage()
 
-    case apply(storage.module, :get, [collection, key]) do
+    case get(collection, key) do
       {:ok, nil} -> default
       {:ok, old_value} -> function.(old_value)
       {:error, reason} -> raise RuntimeError, message: inspect(reason)

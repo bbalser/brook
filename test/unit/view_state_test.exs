@@ -34,6 +34,11 @@ defmodule Brook.ViewStateTest do
       entries = Brook.get_all!(:data)
       create(:cached_read, data["id"], entries)
     end
+
+    def handle_event(%Brook.Event{type: "double_merge", data: data}) do
+      merge(:data, data["id"], data)
+      merge(:data, data["id"], %{second_merge: true})
+    end
   end
 
   setup do
@@ -105,6 +110,14 @@ defmodule Brook.ViewStateTest do
     test "cannot be called outside of event handler" do
       assert_raise Brook.InvalidEvent, fn ->
         Brook.ViewState.merge("people", "key1", %{one: 1})
+      end
+    end
+
+    test "data can be merged into more than once in scope of a single event" do
+      send_event("double_merge", %{"id" => 18, "name" => "Bill"})
+
+      assert_async do
+        assert %{"id" => 18, "name" => "Bill", second_merge: true} == Brook.get!(:data, 18)
       end
     end
   end
