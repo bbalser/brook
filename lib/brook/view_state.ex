@@ -103,7 +103,6 @@ defmodule Brook.ViewState do
 
   defp do_merge(collection, key, default, function) when is_function(function, 1) do
     assert_event()
-    storage = Brook.Config.storage()
 
     case get(collection, key) do
       {:ok, nil} -> default
