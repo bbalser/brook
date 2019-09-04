@@ -91,6 +91,12 @@ defmodule Brook.Storage.RedisTest do
 
       assert {:error, :some_failure} == Redis.get_all("people")
     end
+
+    test "returns empty map when no data available" do
+      allow Redix.command(any(), ["KEYS" | any()]), return: {:ok, []}
+
+      assert {:ok, %{}} == Redis.get_all("jerks")
+    end
   end
 
   describe "delete/2" do

@@ -85,8 +85,11 @@ defmodule Brook.ViewState do
 
   defp assert_event() do
     case Process.get(:brook_current_event) != nil do
-      false -> raise Brook.InvalidEvent, message: "No Event Found: can only be called in Brook.Event.Handler implementation"
-      true -> true
+      false ->
+        raise Brook.InvalidEvent, message: "No Event Found: can only be called in Brook.Event.Handler implementation"
+
+      true ->
+        true
     end
   end
 

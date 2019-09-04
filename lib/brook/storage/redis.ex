@@ -121,7 +121,7 @@ defmodule Brook.Storage.Redis do
   defp redis_keys(redix, key), do: Redix.command(redix, ["KEYS", key])
   defp redis_delete(redix, keys), do: Redix.command(redix, ["DEL" | keys])
 
-  defp redis_multiget(_redix, []), do: []
+  defp redis_multiget(_redix, []), do: {:ok, []}
   defp redis_multiget(redix, keys), do: Redix.command(redix, ["MGET" | keys])
 
   defp ok(value), do: {:ok, value}
