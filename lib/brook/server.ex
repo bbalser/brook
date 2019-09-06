@@ -33,28 +33,6 @@ defmodule Brook.Server do
     {:reply, :ok, state}
   end
 
-  def handle_call({:send, type, author, event}, _from, state) do
-    brook_event = %Brook.Event{
-      type: type,
-      author: author,
-      data: event
-    }
-
-    case Brook.Serializer.serialize(brook_event) do
-      {:ok, serialized_event} ->
-        :ok = apply(state.driver.module, :send_event, [type, serialized_event])
-
-      {:error, reason} ->
-        Logger.error(
-          "Unable to send event: type(#{type}), author(#{author}), event(#{inspect(event)}), error reason: #{
-            inspect(reason)
-          }"
-        )
-    end
-
-    {:reply, :ok, state}
-  end
-
   def handle_cast({:process, event}, state) do
     process(event, state)
     {:noreply, state}

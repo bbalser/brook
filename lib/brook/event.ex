@@ -10,7 +10,10 @@ defmodule Brook.Event do
   The data component of the message is an arbitrary Elixir term but is typically
   a map or struct.
   """
+  require Logger
+
   @type data :: term()
+  @type driver :: term()
 
   @type t :: %__MODULE__{
           type: String.t(),
@@ -44,7 +47,29 @@ defmodule Brook.Event do
   """
   @spec send(Brook.event_type(), Brook.author(), Brook.event()) :: :ok | {:error, Brook.reason()}
   def send(type, author, event) do
-    GenServer.call({:via, Registry, {Brook.Registry, Brook.Server}}, {:send, type, author, event})
+    send(type, author, event, Brook.Config.driver())
+  end
+
+  @spec send(Brook.event_type(), Brook.author(), Brook.event(), driver()) :: :ok | {:error, Brook.reason()}
+  def send(type, author, event, driver)  do
+    brook_event = %Brook.Event{
+      type: type,
+      author: author,
+      data: event
+    }
+
+    case Brook.Serializer.serialize(brook_event) do
+      {:ok, serialized_event} ->
+        :ok = apply(driver.module, :send_event, [type, serialized_event])
+
+      {:error, reason} ->
+        Logger.error(
+          "Unable to send event: type(#{type}), author(#{author}), event(#{inspect(event)}), error reason: #{
+          inspect(reason)
+          }"
+        )
+    end
+
     :ok
   end
 
