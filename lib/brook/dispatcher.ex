@@ -53,3 +53,15 @@ defmodule Brook.Dispatcher.Default do
     end)
   end
 end
+
+defmodule Brook.Dispatcher.Noop do
+  @behaviour Brook.Dispatcher
+
+  def init() do
+    :ok
+  end
+
+  def dispatch(_event) do
+    :ok
+  end
+end

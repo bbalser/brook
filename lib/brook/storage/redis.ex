@@ -93,14 +93,10 @@ defmodule Brook.Storage.Redis do
     :ets.new(__MODULE__, [:set, :protected, :named_table])
     :ets.insert(__MODULE__, {:namespace, namespace})
 
-    {:ok, %{namespace: namespace}, {:continue, {:init, redix_args}}}
-  end
+    {:ok, redix} = Redix.start_link(redix_args)
+    :ets.insert(__MODULE__, {:redix, redix})
 
-  @impl GenServer
-  def handle_continue({:init, redix_args}, state) do
-    {:ok, pid} = Redix.start_link(redix_args)
-    :ets.insert(__MODULE__, {:redix, pid})
-    {:noreply, Map.put(state, :redix, pid)}
+    {:ok, %{namespace: namespace, redix: redix}}
   end
 
   defp state(key) do
