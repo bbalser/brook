@@ -28,6 +28,14 @@ defmodule Brook.Server do
     {:ok, config}
   end
 
+  def handle_call({:execute_test_function, event, function}, _from, state) when is_function(function, 0) do
+    register_event(event)
+    function.()
+    Brook.ViewState.commit()
+    unregister_event()
+    {:reply, :ok, state}
+  end
+
   def handle_call({:process, event}, _from, state) do
     process(event, state)
     {:reply, :ok, state}
@@ -39,7 +47,7 @@ defmodule Brook.Server do
   end
 
   defp process(%Brook.Event{forwarded: false} = event, state) do
-    Process.put(:brook_current_event, event)
+    register_event(event)
 
     Enum.each(state.event_handlers, fn handler ->
       case apply(handler, :handle_event, [event]) do
@@ -63,18 +71,18 @@ defmodule Brook.Server do
     Brook.ViewState.commit()
 
     apply(state.dispatcher, :dispatch, [event])
-    Process.delete(:brook_current_event)
+    unregister_event()
   end
 
   defp process(%Brook.Event{forwarded: true} = event, state) do
-    Process.put(:brook_current_event, event)
+    register_event(event)
 
     Enum.each(state.event_handlers, fn handler ->
       apply(handler, :handle_event, [event])
     end)
 
     Brook.ViewState.rollback()
-    Process.delete(:brook_current_event)
+    unregister_event()
   end
 
   defp process(event, state) do
@@ -87,5 +95,7 @@ defmodule Brook.Server do
     end
   end
 
+  defp register_event(event), do: Process.put(:brook_current_event, event)
+  defp unregister_event(), do: Process.delete(:brook_current_event)
   defp via(), do: {:via, Registry, {Brook.Registry, __MODULE__}}
 end

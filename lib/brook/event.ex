@@ -51,7 +51,7 @@ defmodule Brook.Event do
   end
 
   @spec send(Brook.event_type(), Brook.author(), Brook.event(), driver()) :: :ok | {:error, Brook.reason()}
-  def send(type, author, event, driver)  do
+  def send(type, author, event, driver) do
     brook_event = %Brook.Event{
       type: type,
       author: author,
@@ -65,7 +65,7 @@ defmodule Brook.Event do
       {:error, reason} ->
         Logger.error(
           "Unable to send event: type(#{type}), author(#{author}), event(#{inspect(event)}), error reason: #{
-          inspect(reason)
+            inspect(reason)
           }"
         )
     end
