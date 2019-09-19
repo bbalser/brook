@@ -9,17 +9,19 @@ defmodule Brook.Event.Kafka.Serializer.JsonTest do
         data: %{"id" => 1, "name" => "bob"}
       )
 
-      expected =
+      {:ok, expected} =
         %{
+          "__brook_struct__" => "Elixir.Brook.Event",
           "type" => event.type,
           "author" => event.author,
           "create_ts" => event.create_ts,
-          "data" => Jason.encode!(%{"id" => 1, "name" => "bob"})
+          "data" => Jason.encode!(%{"id" => 1, "name" => "bob"}),
+          "forwarded" => event.forwarded
         }
-        |> Jason.encode!()
-        |> Jason.decode!()
+        |> Jason.encode()
 
-      assert {:ok, expected} == Brook.Serializer.serialize(event) |> decode()
+      {:ok, actual} = Brook.Serializer.serialize(event) |> decode() |> encode()
+      assert expected == actual
     end
 
     test "structs are encoded as json and the struct name is returned" do
@@ -30,17 +32,11 @@ defmodule Brook.Event.Kafka.Serializer.JsonTest do
       )
 
       expected =
-        %{
-          "type" => "create",
-          "author" => "joe",
-          "create_ts" => event.create_ts,
-          "__struct__" => "Elixir.TempStruct",
-          "data" => Jason.encode!(%{"name" => "Bob", "age" => 21, "location" => "Columbus"})
-        }
-        |> Jason.encode!()
-        |> Jason.decode!()
+        %{"__brook_struct__" => "Elixir.TempStruct", "name" => "Bob", "age" => 21, "location" => "Columbus"}
+        |> Jason.encode()
 
-      assert {:ok, expected} == Brook.Serializer.serialize(event) |> decode()
+      {:ok, actual} = Brook.Serializer.serialize(event) |> decode()
+      assert expected == {:ok, actual["data"]} |> decode() |> encode()
     end
 
     test "returns an error when unable to encode data" do
@@ -72,6 +68,7 @@ defmodule Brook.Event.Kafka.Serializer.JsonTest do
     test "decodes json into map" do
       json =
         %{
+          "__brook_struct__" => "Elixir.Brook.Event",
           "type" => "update",
           "author" => "george",
           "create_ts" => 0,
@@ -86,7 +83,7 @@ defmodule Brook.Event.Kafka.Serializer.JsonTest do
         data: %{"id" => 1, "name" => "Roger"}
       )
 
-      assert {:ok, expected} == Brook.Deserializer.deserialize(struct(Brook.Event), json)
+      assert {:ok, expected} == Brook.Deserializer.deserialize(json)
     end
 
     test "decodes json into struct" do
@@ -95,8 +92,8 @@ defmodule Brook.Event.Kafka.Serializer.JsonTest do
           "type" => "create",
           "author" => "Howard",
           "create_ts" => 0,
-          "__struct__" => "Elixir.TempStruct",
-          "data" => %{"name" => "Corey", "age" => 33, "location" => "Hawaii"} |> Jason.encode!()
+          "__brook_struct__" => "Elixir.Brook.Event",
+          "data" => %{"__brook_struct__" => "Elixir.TempStruct", "name" => "Corey", "age" => 33, "location" => "Hawaii"} |> Jason.encode!()
         }
         |> Jason.encode!()
 
@@ -127,5 +124,6 @@ defmodule Brook.Event.Kafka.Serializer.JsonTest do
     end
   end
 
+  defp encode({:ok, value}), do: {:ok, Jason.encode!(value)}
   defp decode({:ok, value}), do: {:ok, Jason.decode!(value)}
 end

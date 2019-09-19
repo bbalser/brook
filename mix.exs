@@ -25,9 +25,9 @@ defmodule Brook.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:brook_serializer, "~> 1.0"},
+      {:brook_serializer, git: "https://github.com/jeffgrunewald/brook_serializer.git", branch: "change_api"},
       {:redix, "~> 0.10.2"},
-      {:elsa, "~> 0.7.1"},
+      {:elsa, "~> 0.9.0"},
       {:placebo, "~> 1.2", only: [:dev, :test, :integration]},
       {:assertions, "~> 0.14.1", only: [:test, :integration]},
       {:divo, "~> 1.1", only: [:dev, :integration]},
