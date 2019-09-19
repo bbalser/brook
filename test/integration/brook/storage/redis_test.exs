@@ -11,19 +11,36 @@ defmodule Brook.Storage.RedisTest do
     test "will save the key/value in a collection", %{redix: redix} do
       Redis.persist(:event1, "people", "key1", %{one: 1})
 
-      binary_value = Redix.command!(redix, ["GET", "testing:people:key1"])
-      assert %{key: "key1", value: %{one: 1}} == :erlang.binary_to_term(binary_value)
+      saved_value =
+        Redix.command!(redix, ["GET", "testing:people:key1"])
+        |> Jason.decode!()
+        |> (fn %{"key" => _key, "value" => value} -> value end).()
+        |> Jason.decode!()
+
+      assert %{"one" => 1} == saved_value
     end
 
     test "will append the event to a redis list", %{redix: redix} do
-      :ok = Redis.persist(:event1, "people", "key1", %{one: 1})
-      :ok = Redis.persist(:event2, "people", "key1", %{one: 1, two: 2})
+      event1 = %Brook.Event{author: "bob", type: "create", data: %{one: 1}}
+      event2 = %Brook.Event{author: "bob", type: "update", data: %{one: 1, two: 2}}
 
-      binary_value = Redix.command!(redix, ["GET", "testing:people:key1"])
-      assert %{key: "key1", value: %{one: 1, two: 2}} == :erlang.binary_to_term(binary_value)
+      :ok = Redis.persist(event1, "people", "key1", event1.data)
+      :ok = Redis.persist(event2, "people", "key1", event2.data)
 
-      binary_event_list = Redix.command!(redix, ["LRANGE", "testing:people:key1:events", 0, -1])
-      assert [:event1, :event2] == Enum.map(binary_event_list, &:erlang.binary_to_term/1)
+      saved_value =
+        Redix.command!(redix, ["GET", "testing:people:key1"])
+        |> Jason.decode!()
+        |> (fn %{"key" => _key, "value" => value} -> value end).()
+        |> Jason.decode!()
+
+      assert %{"one" => 1, "two" => 2} == saved_value
+
+      saved_event_list =
+        Redix.command!(redix, ["LRANGE", "testing:people:key1:events", 0, -1])
+        |> Enum.map(&Brook.Deserializer.deserialize/1)
+        |> Enum.map(fn {:ok, decoded_value} -> decoded_value end)
+
+      assert [%{event1 | data: %{"one" => 1}}, %{event2 | data: %{"one" => 1, "two" => 2}}] == saved_event_list
     end
 
     test "will return an error tuple when redis returns an error" do
@@ -46,7 +63,7 @@ defmodule Brook.Storage.RedisTest do
     test "will return the value persisted in redis" do
       :ok = Redis.persist(:event1, "people", "key1", %{name: "joe"})
 
-      assert {:ok, %{name: "joe"}} == Redis.get("people", "key1")
+      assert {:ok, %{"name" => "joe"}} == Redis.get("people", "key1")
     end
 
     test "returns an error tuple when redix returns an error" do
@@ -60,10 +77,14 @@ defmodule Brook.Storage.RedisTest do
     setup [:start_redis, :start_local_redix]
 
     test "returns all events for key" do
-      :ok = Redis.persist(:event1, "people", "key1", %{one: 1})
-      :ok = Redis.persist(:event2, "people", "key1", %{one: 1, two: 2})
+      event1 = %Brook.Event{author: "steve", type: "create", data: %{one: 1}}
+      event2 = %Brook.Event{author: "steve", type: "update", data: %{one: 1, two: 2}}
 
-      assert {:ok, [:event1, :event2]} == Redis.get_events("people", "key1")
+      :ok = Redis.persist(event1, "people", "key1", event1.data)
+      :ok = Redis.persist(event2, "people", "key1", event2.data)
+
+      assert {:ok, [%{event1 | data: %{"one" => 1}}, %{event2 | data: %{"one" => 1, "two" => 2}}]} ==
+               Redis.get_events("people", "key1")
     end
 
     test "returns error tuple when redix returns an error" do

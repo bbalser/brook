@@ -20,10 +20,12 @@ defmodule Brook.Storage.Redis do
     redix = state(:redix)
     Logger.debug(fn -> "#{__MODULE__}: persisting #{collection}:#{key}:#{inspect(value)} to redis" end)
 
-    with {:ok, "OK"} <-
-           redis_set(redix, key(namespace, collection, key), :erlang.term_to_binary(%{key: key, value: value})),
+    with {:ok, serialized_event} <- Brook.Serializer.serialize(event),
+         {:ok, serialized_value} <- Brook.Serializer.serialize(value),
+         {:ok, "OK"} <-
+           redis_set(redix, key(namespace, collection, key), Jason.encode!(%{key: key, value: serialized_value})),
          {:ok, _count} <-
-           redis_append(redix, events_key(namespace, collection, key), :erlang.term_to_binary(event, compressed: 9)) do
+           redis_append(redix, events_key(namespace, collection, key), serialized_event) do
       :ok
     end
   rescue
@@ -47,9 +49,10 @@ defmodule Brook.Storage.Redis do
         {:ok, nil}
 
       {:ok, value} ->
-        :erlang.binary_to_term(value)
-        |> Map.get(:value)
-        |> ok()
+        value
+        |> Jason.decode!()
+        |> Map.get("value")
+        |> Brook.Deserializer.deserialize()
 
       error_result ->
         error_result
@@ -63,10 +66,10 @@ defmodule Brook.Storage.Redis do
 
     with {:ok, keys} <- redis_keys(redix, key(namespace, collection, "*")),
          filtered_keys <- Enum.filter(keys, fn key -> !String.ends_with?(key, ":events") end),
-         {:ok, binary_values} <- redis_multiget(redix, filtered_keys) do
-      binary_values
-      |> Enum.map(&:erlang.binary_to_term/1)
-      |> Enum.map(fn %{key: key, value: value} -> {key, value} end)
+         {:ok, encoded_values} <- redis_multiget(redix, filtered_keys) do
+      encoded_values
+      |> Enum.map(&Jason.decode!/1)
+      |> Enum.map(&deserialize_data/1)
       |> Enum.into(%{})
       |> ok()
     end
@@ -75,8 +78,13 @@ defmodule Brook.Storage.Redis do
   @impl Brook.Storage
   def get_events(collection, key) do
     case redis_get_all(state(:redix), events_key(state(:namespace), collection, key)) do
-      {:ok, value} -> {:ok, Enum.map(value, &:erlang.binary_to_term(&1))}
-      error_result -> error_result
+      {:ok, value} ->
+        Enum.map(value, &Brook.Deserializer.deserialize/1)
+        |> Enum.map(fn {:ok, event} -> event end)
+        |> ok()
+
+      error_result ->
+        error_result
     end
   end
 
@@ -124,4 +132,9 @@ defmodule Brook.Storage.Redis do
   defp key(namespace, collection, key), do: "#{namespace}:#{collection}:#{key}"
   defp events_key(namespace, collection, key), do: "#{namespace}:#{collection}:#{key}:events"
   defp via(), do: {:via, Registry, {Brook.Registry, __MODULE__}}
+
+  defp deserialize_data(%{"key" => key, "value" => value}) do
+    {:ok, deserialized_value} = Brook.Deserializer.deserialize(value)
+    {key, deserialized_value}
+  end
 end

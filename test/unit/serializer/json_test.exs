@@ -93,7 +93,9 @@ defmodule Brook.Event.Kafka.Serializer.JsonTest do
           "author" => "Howard",
           "create_ts" => 0,
           "__brook_struct__" => "Elixir.Brook.Event",
-          "data" => %{"__brook_struct__" => "Elixir.TempStruct", "name" => "Corey", "age" => 33, "location" => "Hawaii"} |> Jason.encode!()
+          "data" =>
+            %{"__brook_struct__" => "Elixir.TempStruct", "name" => "Corey", "age" => 33, "location" => "Hawaii"}
+            |> Jason.encode!()
         }
         |> Jason.encode!()
 
