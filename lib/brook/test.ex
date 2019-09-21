@@ -17,13 +17,11 @@ defmodule Brook.Test do
   end
 
   def save_view_state(collection, key, value) do
-    event = %Brook.Event{type: "fake:test:event", author: "testing", data: nil}
-    save_view_state(event, collection, key, value)
+    save_view_state(fake_event(), collection, key, value)
   end
 
   def with_event(function) when is_function(function, 0) do
-    testing_event = %Brook.Event{type: "fake:test:event", author: "testing", data: :test}
-    with_event(testing_event, function)
+    with_event(fake_event(), function)
   end
 
   def with_event(event, function) when is_function(function, 0) do
@@ -39,4 +37,6 @@ defmodule Brook.Test do
       apply(storage.module, :delete, [collection, key])
     end)
   end
+
+  defp fake_event(), do: Brook.Event.new(type: "fake:test:event", author: "testing", data: :test)
 end

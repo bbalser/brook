@@ -120,7 +120,7 @@ defmodule BrookTest do
   end
 
   defp event(type, data, opts \\ []) do
-    %Brook.Event{type: type, author: "testing", data: data}
+    Brook.Event.new(type: type, author: "testing", data: data)
     |> Map.merge(Enum.into(opts, %{}))
   end
 

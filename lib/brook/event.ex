@@ -23,12 +23,16 @@ defmodule Brook.Event do
           forwarded: boolean()
         }
 
-  @enforce_keys [:type, :author, :data]
+  @enforce_keys [:type, :author, :data, :create_ts]
   defstruct type: nil,
             author: nil,
-            create_ts: DateTime.utc_now() |> DateTime.to_unix(:millisecond),
+            create_ts: nil,
             data: nil,
             forwarded: false
+
+  def new(args) do
+    struct!(__MODULE__, Keyword.put_new(args, :create_ts, now()))
+  end
 
   @doc """
   Takes a `Brook.Event` struct and a function and updates the data value of the struct
@@ -52,11 +56,11 @@ defmodule Brook.Event do
 
   @spec send(Brook.event_type(), Brook.author(), Brook.event(), driver()) :: :ok | {:error, Brook.reason()}
   def send(type, author, event, driver) do
-    brook_event = %Brook.Event{
+    brook_event = Brook.Event.new(
       type: type,
       author: author,
       data: event
-    }
+    )
 
     case Brook.Serializer.serialize(brook_event) do
       {:ok, serialized_event} ->
@@ -80,4 +84,6 @@ defmodule Brook.Event do
   def process(event) do
     GenServer.cast({:via, Registry, {Brook.Registry, Brook.Server}}, {:process, event})
   end
+
+  defp now(), do: DateTime.utc_now() |> DateTime.to_unix(:millisecond)
 end
