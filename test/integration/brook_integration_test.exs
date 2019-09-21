@@ -48,7 +48,7 @@ defmodule Brook.IntegrationTest do
     assert_async(timeout: 2_000, sleep_time: 200) do
       expected = %{
         123 => %{"id" => 123, "name" => "George", "age" => 67},
-        :app_state => %{"name" => "app_state"}
+        "app_state" => %{"name" => "app_state"}
       }
 
       assert expected == Brook.get_all!(:all)

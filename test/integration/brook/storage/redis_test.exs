@@ -21,8 +21,8 @@ defmodule Brook.Storage.RedisTest do
     end
 
     test "will append the event to a redis list", %{redix: redix} do
-      event1 = %Brook.Event{author: "bob", type: "create", data: %{one: 1}}
-      event2 = %Brook.Event{author: "bob", type: "update", data: %{one: 1, two: 2}}
+      event1 = Brook.Event.new(author: "bob", type: "create", data: %{one: 1})
+      event2 = Brook.Event.new(author: "bob", type: "update", data: %{one: 1, two: 2})
 
       :ok = Redis.persist(event1, "people", "key1", event1.data)
       :ok = Redis.persist(event2, "people", "key1", event2.data)
@@ -77,8 +77,8 @@ defmodule Brook.Storage.RedisTest do
     setup [:start_redis, :start_local_redix]
 
     test "returns all events for key" do
-      event1 = %Brook.Event{author: "steve", type: "create", data: %{one: 1}}
-      event2 = %Brook.Event{author: "steve", type: "update", data: %{one: 1, two: 2}}
+      event1 = Brook.Event.new(author: "steve", type: "create", data: %{one: 1})
+      event2 = Brook.Event.new(author: "steve", type: "update", data: %{one: 1, two: 2})
 
       :ok = Redis.persist(event1, "people", "key1", event1.data)
       :ok = Redis.persist(event2, "people", "key1", event2.data)
