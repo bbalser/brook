@@ -37,6 +37,7 @@ defmodule Brook.Storage.RedisTest do
 
       saved_event_list =
         Redix.command!(redix, ["LRANGE", "testing:people:key1:events", 0, -1])
+        |> Enum.map(&:zlib.gunzip/1)
         |> Enum.map(&Brook.Deserializer.deserialize/1)
         |> Enum.map(fn {:ok, decoded_value} -> decoded_value end)
 
