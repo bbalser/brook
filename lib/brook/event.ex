@@ -56,11 +56,12 @@ defmodule Brook.Event do
 
   @spec send(Brook.event_type(), Brook.author(), Brook.event(), driver()) :: :ok | {:error, Brook.reason()}
   def send(type, author, event, driver) do
-    brook_event = Brook.Event.new(
-      type: type,
-      author: author,
-      data: event
-    )
+    brook_event =
+      Brook.Event.new(
+        type: type,
+        author: author,
+        data: event
+      )
 
     case Brook.Serializer.serialize(brook_event) do
       {:ok, serialized_event} ->

@@ -11,7 +11,8 @@ defmodule Brook.Config do
             driver: nil,
             event_handlers: nil,
             storage: nil,
-            dispatcher: nil
+            dispatcher: nil,
+            registry: nil
 
   @doc """
   Take a keyword list and extracts values necessary to configure a Brook
@@ -25,7 +26,8 @@ defmodule Brook.Config do
       driver: Keyword.get(opts, :driver, @default_driver) |> Enum.into(%{}),
       event_handlers: Keyword.fetch!(opts, :handlers),
       storage: Keyword.get(opts, :storage, @default_storage) |> Enum.into(%{}),
-      dispatcher: Keyword.get(opts, :dispatcher, @default_dispatcher)
+      dispatcher: Keyword.get(opts, :dispatcher, @default_dispatcher),
+      registry: registry(name)
     }
   end
 

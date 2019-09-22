@@ -11,7 +11,7 @@ defmodule Brook.Storage do
   @doc """
   Start the storage driver and link it to the current process.
   """
-  @callback start_link([registry: Registry.registry()]) :: GenServer.on_start()
+  @callback start_link(registry: Registry.registry()) :: GenServer.on_start()
 
   @doc """
   Define a child specification for including the storage driver in the Brook
@@ -40,7 +40,8 @@ defmodule Brook.Storage do
   Return a value from the persisted view state stored within a collection and
   identified by a key.
   """
-  @callback get(Registry.registry(), Brook.view_collection(), Brook.view_key()) :: {:ok, Brook.view_value()} | {:error, Brook.reason()}
+  @callback get(Registry.registry(), Brook.view_collection(), Brook.view_key()) ::
+              {:ok, Brook.view_value()} | {:error, Brook.reason()}
 
   @doc """
   Return all values saved to the application view state within the storage system

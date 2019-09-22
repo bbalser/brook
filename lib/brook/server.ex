@@ -14,7 +14,7 @@ defmodule Brook.Server do
   """
   @spec start_link(term()) :: {:ok, pid()}
   def start_link(%Brook.Config{} = config) do
-    GenServer.start_link(__MODULE__, config, name: via())
+    GenServer.start_link(__MODULE__, config, name: via(config.registry))
   end
 
   @doc """
@@ -23,7 +23,7 @@ defmodule Brook.Server do
   @spec init(term()) :: {:ok, term()}
   def init(%Brook.Config{} = config) do
     Brook.ViewState.init()
-    config.dispatcher.init()
+    config.dispatcher.init(config.registry)
 
     {:ok, config}
   end
@@ -97,5 +97,5 @@ defmodule Brook.Server do
 
   defp register_event(event), do: Process.put(:brook_current_event, event)
   defp unregister_event(), do: Process.delete(:brook_current_event)
-  defp via(), do: {:via, Registry, {Brook.Registry, __MODULE__}}
+  defp via(registry), do: {:via, Registry, {registry, __MODULE__}}
 end

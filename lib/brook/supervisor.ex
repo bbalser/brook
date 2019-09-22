@@ -20,12 +20,10 @@ defmodule Brook.Supervisor do
       Brook.Config.new(opts)
       |> Brook.Config.store()
 
-    registry = Brook.Config.registry(config.name)
-
     children =
       [
-        {Registry, [keys: :unique, name: registry]},
-        {config.storage.module, create_init_arg(registry, config.storage)},
+        {Registry, [keys: :unique, name: config.registry]},
+        {config.storage.module, create_init_arg(config.registry, config.storage)},
         {Brook.Server, config},
         {config.driver.module, config.driver.init_arg}
       ]

@@ -8,7 +8,7 @@ defmodule Brook.Dispatcher do
   @doc """
   Start a Brook dispatcher.
   """
-  @callback init() :: :ok
+  @callback init([registry: registry]) :: :ok
 
   @doc """
   Distributes received messages across multiple nodes.
@@ -31,10 +31,11 @@ defmodule Brook.Dispatcher.Default do
   Creates and joins the Brook server to the process group
   named `:brook_servers`.
   """
-  @spec init() :: :ok | {:error, term()}
-  def init() do
+  @impl Brook.Dispatcher
+  def init(args) do
+    registry = Keyword.fetch!(args, :registry)
     :pg2.create(@group)
-    [{pid, _}] = Registry.lookup(Brook.Registry, Brook.Server)
+    [{pid, _}] = Registry.lookup(registry, Brook.Server)
     :pg2.join(@group, pid)
   end
 
@@ -43,7 +44,7 @@ defmodule Brook.Dispatcher.Default do
   member nodes of the `:brook_servers` process group after
   tagging the forwarded status of the event to `true`.
   """
-  @spec dispatch(Brook.Event.t()) :: list(:ok)
+  @impl Brook.Dispatcher
   def dispatch(%Brook.Event{} = event) do
     forwarded_event = %{event | forwarded: true}
 
@@ -57,7 +58,7 @@ end
 defmodule Brook.Dispatcher.Noop do
   @behaviour Brook.Dispatcher
 
-  def init() do
+  def init(_args) do
     :ok
   end
 
