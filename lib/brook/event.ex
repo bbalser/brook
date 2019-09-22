@@ -49,13 +49,13 @@ defmodule Brook.Event do
   `Brook.Event` struct, the authoring application, and the type of event. The event type must
   implement the `String.Chars.t` type.
   """
-  @spec send(Brook.event_type(), Brook.author(), Brook.event()) :: :ok | {:error, Brook.reason()}
-  def send(type, author, event) do
-    send(type, author, event, Brook.Config.driver())
+  @spec send(Brook.instance(), Brook.event_type(), Brook.author(), Brook.event()) :: :ok | {:error, Brook.reason()}
+  def send(instance, type, author, event) do
+    send(instance, type, author, event, Brook.Config.driver(instance))
   end
 
-  @spec send(Brook.event_type(), Brook.author(), Brook.event(), driver()) :: :ok | {:error, Brook.reason()}
-  def send(type, author, event, driver) do
+  @spec send(Brook.instance(), Brook.event_type(), Brook.author(), Brook.event(), driver()) :: :ok | {:error, Brook.reason()}
+  def send(instance, type, author, event, driver) do
     brook_event =
       Brook.Event.new(
         type: type,
@@ -65,7 +65,7 @@ defmodule Brook.Event do
 
     case Brook.Serializer.serialize(brook_event) do
       {:ok, serialized_event} ->
-        :ok = apply(driver.module, :send_event, [type, serialized_event])
+        :ok = apply(driver.module, :send_event, [instance, type, serialized_event])
 
       {:error, reason} ->
         Logger.error(
@@ -81,9 +81,10 @@ defmodule Brook.Event do
   @doc """
   Process a `Brook.Event` struct via synchronous call to the `Brook.Server`
   """
-  @spec process(Brook.Event.t() | term()) :: :ok | {:error, Brook.reason()}
-  def process(event) do
-    GenServer.cast({:via, Registry, {Brook.Registry, Brook.Server}}, {:process, event})
+  @spec process(Brook.instance(), Brook.Event.t() | term()) :: :ok | {:error, Brook.reason()}
+  def process(instance, event) do
+    registry = Brook.Config.registry(instance)
+    GenServer.call({:via, Registry, {registry, Brook.Server}}, {:process, event})
   end
 
   defp now(), do: DateTime.utc_now() |> DateTime.to_unix(:millisecond)

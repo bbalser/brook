@@ -11,11 +11,11 @@ defmodule Brook.Driver.Kafka.Handler do
   processes each with Brook.
   """
   @spec handle_messages([term()]) :: :ack
-  def handle_messages(messages) do
+  def handle_messages(messages, state) do
     messages
     |> Enum.map(fn message -> message.value end)
-    |> Enum.each(&Brook.Event.process/1)
+    |> Enum.each(&Brook.Event.process(state.instance, &1))
 
-    :ack
+    {:ack, state}
   end
 end

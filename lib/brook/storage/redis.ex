@@ -7,6 +7,7 @@ defmodule Brook.Storage.Redis do
   """
   use GenServer
   require Logger
+  import Brook.Config, only: [registry: 1, put: 3, get: 2]
   @behaviour Brook.Storage
 
   @type config :: [
@@ -15,8 +16,8 @@ defmodule Brook.Storage.Redis do
         ]
 
   @impl Brook.Storage
-  def persist(registry, event, collection, key, value) do
-    %{redix: redix, namespace: namespace} = state(registry)
+  def persist(instance, event, collection, key, value) do
+    %{redix: redix, namespace: namespace} = state(instance)
     Logger.debug(fn -> "#{__MODULE__}: persisting #{collection}:#{key}:#{inspect(value)} to redis" end)
 
     with {:ok, serialized_event} <- Brook.Serializer.serialize(event),
@@ -33,8 +34,8 @@ defmodule Brook.Storage.Redis do
   end
 
   @impl Brook.Storage
-  def delete(registry, collection, key) do
-    %{redix: redix, namespace: namespace} = state(registry)
+  def delete(instance, collection, key) do
+    %{redix: redix, namespace: namespace} = state(instance)
 
     case redis_delete(redix, [key(namespace, collection, key), events_key(namespace, collection, key)]) do
       {:ok, _count} -> :ok
@@ -43,8 +44,8 @@ defmodule Brook.Storage.Redis do
   end
 
   @impl Brook.Storage
-  def get(registry, collection, key) do
-    %{redix: redix, namespace: namespace} = state(registry)
+  def get(instance, collection, key) do
+    %{redix: redix, namespace: namespace} = state(instance)
 
     case redis_get(redix, key(namespace, collection, key)) do
       {:ok, nil} ->
@@ -62,8 +63,8 @@ defmodule Brook.Storage.Redis do
   end
 
   @impl Brook.Storage
-  def get_all(registry, collection) do
-    %{redix: redix, namespace: namespace} = state(registry)
+  def get_all(instance, collection) do
+    %{redix: redix, namespace: namespace} = state(instance)
 
     with {:ok, keys} <- redis_keys(redix, key(namespace, collection, "*")),
          filtered_keys <- Enum.filter(keys, fn key -> !String.ends_with?(key, ":events") end),
@@ -77,8 +78,8 @@ defmodule Brook.Storage.Redis do
   end
 
   @impl Brook.Storage
-  def get_events(registry, collection, key) do
-    %{redix: redix, namespace: namespace} = state(registry)
+  def get_events(instance, collection, key) do
+    %{redix: redix, namespace: namespace} = state(instance)
 
     case redis_get_all(redix, events_key(namespace, collection, key)) do
       {:ok, events} ->
@@ -95,25 +96,25 @@ defmodule Brook.Storage.Redis do
 
   @impl Brook.Storage
   def start_link(args) do
-    registry = Keyword.fetch!(args, :registry)
-    GenServer.start_link(__MODULE__, args, name: via(registry))
+    instance = Keyword.fetch!(args, :instance)
+    GenServer.start_link(__MODULE__, args, name: via(registry(instance)))
   end
 
   @impl GenServer
   def init(args) do
-    registry = Keyword.fetch!(args, :registry)
+    instance = Keyword.fetch!(args, :instance)
     redix_args = Keyword.fetch!(args, :redix_args)
     namespace = Keyword.fetch!(args, :namespace)
 
     {:ok, redix} = Redix.start_link(redix_args)
 
-    Registry.put_meta(registry, __MODULE__, %{namespace: namespace, redix: redix})
+    put(instance, __MODULE__, %{namespace: namespace, redix: redix})
 
     {:ok, %{namespace: namespace, redix: redix}}
   end
 
-  defp state(registry) do
-    case Registry.meta(registry, __MODULE__) do
+  defp state(instance) do
+    case get(instance, __MODULE__) do
       {:ok, value} -> value
       :error -> raise not_initialized_exception()
     end

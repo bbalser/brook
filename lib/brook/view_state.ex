@@ -1,20 +1,19 @@
 defmodule Brook.ViewState do
   require Logger
 
-  @table :brook_view_state_stage
   @delete_marker :"$delete_me"
 
-  def init() do
-    :ets.new(@table, [:set, :protected, :named_table])
+  def init(instance) do
+    :ets.new(table(instance), [:set, :protected, :named_table])
   end
 
-  @spec get(Brook.view_collection(), Brook.view_key()) :: {:ok, Brook.view_value()} | {:error, Brook.reason()}
-  def get(collection, key) do
-    case :ets.lookup(@table, {collection, key}) do
+  @spec get(Brook.instance(), Brook.view_collection(), Brook.view_key()) :: {:ok, Brook.view_value()} | {:error, Brook.reason()}
+  def get(instance, collection, key) do
+    case :ets.lookup(table(instance), {collection, key}) do
       [] ->
-        storage = Brook.Config.storage()
+        storage = Brook.Config.storage(instance)
         Logger.debug(fn -> "#{__MODULE__}: Retrieving #{collection}:#{key} from storage(#{storage.module})" end)
-        apply(storage.module, :get, [collection, key])
+        apply(storage.module, :get, [instance, collection, key])
 
       [{_, @delete_marker}] ->
         {:ok, nil}
@@ -26,21 +25,21 @@ defmodule Brook.ViewState do
     e -> raise Brook.Uninitialized, message: inspect(e)
   end
 
-  @spec get_all(Brook.view_collection()) ::
+  @spec get_all(Brook.instance(), Brook.view_collection()) ::
           {:ok, %{required(Brook.view_key()) => Brook.view_value()}} | {:error, Brook.reason()}
-  def get_all(collection) do
-    storage = Brook.Config.storage()
+  def get_all(instance, collection) do
+    storage = Brook.Config.storage(instance)
 
-    with {:ok, persisted_entries} <- apply(storage.module, :get_all, [collection]),
-         cached_entries <- get_all_cached_entries(collection) do
+    with {:ok, persisted_entries} <- apply(storage.module, :get_all, [instance, collection]),
+         cached_entries <- get_all_cached_entries(instance, collection) do
       {:ok, Map.merge(persisted_entries, cached_entries)}
     end
   end
 
   @spec create(Brook.view_collection(), Brook.view_key(), Brook.view_value()) :: :ok
   def create(collection, key, value) do
-    assert_event()
-    :ets.insert(@table, {{collection, key}, value})
+    assert_environment()
+    :ets.insert(table(instance()), {{collection, key}, value})
     :ok
   end
 
@@ -62,25 +61,37 @@ defmodule Brook.ViewState do
 
   @spec delete(Brook.view_collection(), Brook.view_key()) :: :ok
   def delete(collection, key) do
-    assert_event()
-    :ets.insert(@table, {{collection, key}, @delete_marker})
+    assert_environment()
+    :ets.insert(table(instance()), {{collection, key}, @delete_marker})
     :ok
   end
 
-  def commit() do
-    storage = Brook.Config.storage()
+  def commit(instance) do
     current_event = Process.get(:brook_current_event)
 
-    :ets.match_object(@table, :_)
+    :ets.match_object(table(instance), :_)
     |> Enum.each(fn {{collection, key}, value} ->
-      persist(storage, current_event, collection, key, value)
+      persist(instance, current_event, collection, key, value)
     end)
 
-    :ets.delete_all_objects(@table)
+    :ets.delete_all_objects(table(instance))
   end
 
-  def rollback() do
-    :ets.delete_all_objects(@table)
+  def rollback(instance) do
+    :ets.delete_all_objects(table(instance))
+  end
+
+  defp assert_environment() do
+    assert_event()
+    assert_instance()
+  end
+
+  defp assert_instance() do
+    case Process.get(:brook_instance) != nil do
+      false ->
+        raise Brook.InvalidInstance, message: "No Instance found: can only be called in Brook.Event.Handler implementation"
+      true -> true
+    end
   end
 
   defp assert_event() do
@@ -93,26 +104,28 @@ defmodule Brook.ViewState do
     end
   end
 
-  defp persist(storage, _event, collection, key, @delete_marker) do
-    :ok = apply(storage.module, :delete, [collection, key])
+  defp persist(instance, _event, collection, key, @delete_marker) do
+    storage = Brook.Config.storage(instance)
+    :ok = apply(storage.module, :delete, [instance, collection, key])
   end
 
-  defp persist(storage, event, collection, key, value) do
-    :ok = apply(storage.module, :persist, [event, collection, key, value])
+  defp persist(instance, event, collection, key, value) do
+    storage = Brook.Config.storage(instance)
+    :ok = apply(storage.module, :persist, [instance, event, collection, key, value])
   end
 
   defp do_merge(collection, key, default, function) when is_function(function, 1) do
-    assert_event()
+    assert_environment()
 
-    case get(collection, key) do
+    case get(instance(), collection, key) do
       {:ok, nil} -> default
       {:ok, old_value} -> function.(old_value)
       {:error, reason} -> raise RuntimeError, message: inspect(reason)
     end
   end
 
-  defp get_all_cached_entries(requested_collection) do
-    :ets.match_object(@table, :_)
+  defp get_all_cached_entries(instance, requested_collection) do
+    :ets.match_object(table(instance), :_)
     |> Enum.filter(fn {{collection, _key}, _value} -> collection == requested_collection end)
     |> Enum.map(fn {{_collection, key}, value} ->
       case value == @delete_marker do
@@ -122,4 +135,7 @@ defmodule Brook.ViewState do
     end)
     |> Enum.into(%{})
   end
+
+  defp instance(), do: Process.get(:brook_instance)
+  defp table(instance), do: :"brook_view_state_stage_#{instance}"
 end

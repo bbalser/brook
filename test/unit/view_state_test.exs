@@ -2,6 +2,8 @@ defmodule Brook.ViewStateTest do
   use ExUnit.Case
   import Assertions
 
+  @instance :brook_test
+
   defmodule CustomHandler do
     use Brook.Event.Handler
 
@@ -19,19 +21,19 @@ defmodule Brook.ViewStateTest do
 
     def handle_event(%Brook.Event{type: "cache_read", data: data}) do
       create(:data, data["id"], data)
-      cached_value = Brook.get!(:data, data["id"])
+      cached_value = Brook.get!(instance(), :data, data["id"])
       create(:cached_read, data["id"], cached_value)
     end
 
     def handle_event(%Brook.Event{type: "delete_cache_read", data: data}) do
       delete(:data, data["id"])
-      cached_value = Brook.get!(:data, data["id"])
+      cached_value = Brook.get!(instance(), :data, data["id"])
       create(:cached_read, data["id"], %{cached_value: cached_value})
     end
 
     def handle_event(%Brook.Event{type: "cache_read_all", data: data}) do
       create(:data, data["id"], data)
-      entries = Brook.get_all!(:data)
+      entries = Brook.get_all!(instance(), :data)
       create(:cached_read, data["id"], entries)
     end
 
@@ -44,11 +46,8 @@ defmodule Brook.ViewStateTest do
   setup do
     {:ok, brook} =
       Brook.start_link(
-        handlers: [CustomHandler],
-        storage: [
-          module: Brook.Storage.Ets,
-          init_arg: []
-        ]
+        instance: @instance,
+        handlers: [CustomHandler]
       )
 
     on_exit(fn ->
@@ -65,7 +64,7 @@ defmodule Brook.ViewStateTest do
       send_event("create", %{"id" => 1, "name" => "joe"})
 
       assert_async do
-        assert %{"id" => 1, "name" => "joe"} == Brook.get!(:data, 1)
+        assert %{"id" => 1, "name" => "joe"} == Brook.get!(@instance, :data, 1)
       end
     end
 
@@ -73,8 +72,8 @@ defmodule Brook.ViewStateTest do
       send_event("cache_read", %{"id" => 12, "name" => "George"})
 
       assert_async do
-        assert %{"id" => 12, "name" => "George"} == Brook.get!(:data, 12)
-        assert %{"id" => 12, "name" => "George"} == Brook.get!(:cached_read, 12)
+        assert %{"id" => 12, "name" => "George"} == Brook.get!(@instance, :data, 12)
+        assert %{"id" => 12, "name" => "George"} == Brook.get!(@instance, :cached_read, 12)
       end
     end
 
@@ -83,7 +82,7 @@ defmodule Brook.ViewStateTest do
       send_event("merge", %{"id" => 3, "age" => 21})
 
       assert_async do
-        events = Brook.get_events!(:data, 3)
+        events = Brook.get_events!(@instance, :data, 3)
         assert 2 == length(events)
         assert Enum.at(events, 0).type == "create"
         assert Enum.at(events, 1).type == "merge"
@@ -103,7 +102,7 @@ defmodule Brook.ViewStateTest do
       send_event("merge", %{"id" => 1, "age" => 21})
 
       assert_async do
-        assert %{"id" => 1, "name" => "joe", "age" => 21} == Brook.get!(:data, 1)
+        assert %{"id" => 1, "name" => "joe", "age" => 21} == Brook.get!(@instance, :data, 1)
       end
     end
 
@@ -117,7 +116,7 @@ defmodule Brook.ViewStateTest do
       send_event("double_merge", %{"id" => 18, "name" => "Bill"})
 
       assert_async do
-        assert %{"id" => 18, "name" => "Bill", second_merge: true} == Brook.get!(:data, 18)
+        assert %{"id" => 18, "name" => "Bill", second_merge: true} == Brook.get!(@instance, :data, 18)
       end
     end
   end
@@ -127,13 +126,13 @@ defmodule Brook.ViewStateTest do
       send_event("create", %{"id" => 7, "name" => "joe"})
 
       assert_async do
-        assert %{"id" => 7, "name" => "joe"} == Brook.get!(:data, 7)
+        assert %{"id" => 7, "name" => "joe"} == Brook.get!(@instance, :data, 7)
       end
 
       send_event("delete", %{"id" => 7})
 
       assert_async do
-        assert nil == Brook.get!(:data, 7)
+        assert nil == Brook.get!(@instance, :data, 7)
       end
     end
 
@@ -142,7 +141,7 @@ defmodule Brook.ViewStateTest do
       send_event("delete_cache_read", %{"id" => 5})
 
       assert_async do
-        assert %{cached_value: nil} == Brook.get!(:cached_read, 5)
+        assert %{cached_value: nil} == Brook.get!(@instance, :cached_read, 5)
       end
     end
 
@@ -159,7 +158,7 @@ defmodule Brook.ViewStateTest do
       send_event("cache_read_all", %{"id" => 68, "name" => "wilma"})
 
       assert_async do
-        entries = Brook.get!(:cached_read, 68) || %{}
+        entries = Brook.get!(@instance, :cached_read, 68) || %{}
         assert 2 == Enum.count(entries)
         assert Map.get(entries, 67) == %{"id" => 67, "name" => "fred"}
         assert Map.get(entries, 68) == %{"id" => 68, "name" => "wilma"}
@@ -168,6 +167,6 @@ defmodule Brook.ViewStateTest do
   end
 
   def send_event(type, data) do
-    Brook.Event.send(type, "testing", data)
+    Brook.Event.send(@instance, type, "testing", data)
   end
 end

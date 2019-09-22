@@ -13,7 +13,7 @@ defmodule Brook.Driver do
   @doc """
   Start a Brook driver and link to the current process.
   """
-  @callback start_link(term()) :: GenServer.on_start()
+  @callback start_link([instance: Brook.instance()]) :: GenServer.on_start()
 
   @doc """
   Return a child specification for the Brook driver for inclusion
@@ -25,7 +25,7 @@ defmodule Brook.Driver do
   Send a Brook event to the event stream with a contextual event
   type and a data value serialized for transfer.
   """
-  @callback send_event(Brook.event_type(), serialized_event()) :: :ok | {:error, Brook.reason()}
+  @callback send_event(Brook.instance(), Brook.event_type(), serialized_event()) :: :ok | {:error, Brook.reason()}
 end
 
 defmodule Brook.Driver.Default do
@@ -39,24 +39,26 @@ defmodule Brook.Driver.Default do
   @doc """
   Start the default Brooker driver GenServer and link it to the current process.
   """
-  def start_link(_opts) do
-    GenServer.start_link(__MODULE__, [])
+  @impl Brook.Driver
+  def start_link(args) do
+    GenServer.start_link(__MODULE__, args)
   end
 
   @doc """
   Initializes the default Brook driver with an empty state.
   """
-  @spec init(list()) :: {:ok, []}
-  def init([]) do
+  @impl GenServer
+  def init(_args) do
     {:ok, []}
   end
 
   @doc """
   Takes event data and casts to the Brook server to process.
   """
-  @spec send_event(Brook.event_type(), Brook.Event.t()) :: :ok
-  def send_event(_type, event) do
-    GenServer.cast({:via, Registry, {Brook.Registry, Brook.Server}}, {:process, event})
+  @impl Brook.Driver
+  def send_event(instance, _type, event) do
+    registry = Brook.Config.registry(instance)
+    GenServer.cast({:via, Registry, {registry, Brook.Server}}, {:process, event})
 
     :ok
   end

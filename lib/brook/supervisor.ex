@@ -18,22 +18,22 @@ defmodule Brook.Supervisor do
   def init(opts) do
     config =
       Brook.Config.new(opts)
-      |> Brook.Config.store()
 
     children =
       [
         {Registry, [keys: :unique, name: config.registry]},
-        {config.storage.module, create_init_arg(config.registry, config.storage)},
+        {Brook.Config, config: config},
+        {config.storage.module, create_init_arg(config.instance, config.storage)},
         {Brook.Server, config},
-        {config.driver.module, config.driver.init_arg}
+        {config.driver.module, create_init_arg(config.instance, config.driver)}
       ]
       |> List.flatten()
 
     Supervisor.init(children, strategy: :one_for_one)
   end
 
-  defp create_init_arg(registry, plugin) do
+  defp create_init_arg(instance, plugin) do
     Map.get(plugin, :init_arg, [])
-    |> Keyword.put(:registry, registry)
+    |> Keyword.put(:instance, instance)
   end
 end

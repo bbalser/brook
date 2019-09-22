@@ -7,7 +7,9 @@ defmodule Brook.Config do
   @default_storage %{module: Brook.Storage.Ets, init_arg: []}
   @default_dispatcher Brook.Dispatcher.Default
 
-  defstruct name: nil,
+  use GenServer, restart: :transient
+
+  defstruct instance: nil,
             driver: nil,
             event_handlers: nil,
             storage: nil,
@@ -21,54 +23,68 @@ defmodule Brook.Config do
   """
   @spec new(keyword()) :: map()
   def new(opts) do
+    instance = Keyword.fetch!(opts, :instance)
     %__MODULE__{
-      name: Keyword.fetch!(opts, :name),
+      instance: instance,
       driver: Keyword.get(opts, :driver, @default_driver) |> Enum.into(%{}),
       event_handlers: Keyword.fetch!(opts, :handlers),
       storage: Keyword.get(opts, :storage, @default_storage) |> Enum.into(%{}),
       dispatcher: Keyword.get(opts, :dispatcher, @default_dispatcher),
-      registry: registry(name)
+      registry: registry(instance)
     }
   end
 
-  def store(%Brook.Config{} = config) do
-    table = table_name(config.name)
-    :ets.new(table, [:set, :protected, :named_table])
-
-    :ets.insert(table, {:driver, config.driver})
-    :ets.insert(table, {:event_handlers, config.event_handlers})
-    :ets.insert(table, {:storage, config.storage})
-    :ets.insert(table, {:dispatcher, config.dispatcher})
-
-    config
+  def put(instance, key, value) do
+    Registry.put_meta(registry(instance), key, value)
   end
 
-  def registry(name) do
-    :"brook_registry_#{name}"
+  def get(instance, key) do
+    Registry.meta(registry(instance), key)
   end
 
-  def storage(name) do
-    get(name, :storage)
+  def registry(instance) do
+    :"brook_registry_#{instance}"
   end
 
-  def driver(name) do
-    get(name, :driver)
+  def storage(instance) do
+    get_value(instance, :storage)
   end
 
-  def event_handlers(name) do
-    get(name, :event_handlers)
+  def driver(instance) do
+    get_value(instance, :driver)
   end
 
-  def dispatcher(name) do
-    get(name, :dispatcher)
+  def event_handlers(instance) do
+    get_value(instance, :event_handlers)
   end
 
-  defp table_name(name), do: :"brook_config_table_#{name}"
+  def dispatcher(instance) do
+    get_value(instance, :dispatcher)
+  end
 
-  defp get(name, key) do
-    case :ets.lookup(table_name(name), key) do
-      [] -> raise Brook.Uninitialized, message: "key(#{key}) is not stored in table"
-      [{^key, value}] -> value
+  def start_link(args) do
+    GenServer.start_link(__MODULE__, args)
+  end
+
+  def init(args) do
+    config = Keyword.fetch!(args, :config)
+
+    Registry.put_meta(config.registry, :driver, config.driver)
+    Registry.put_meta(config.registry, :event_handlers, config.event_handlers)
+    Registry.put_meta(config.registry, :storage, config.storage)
+    Registry.put_meta(config.registry, :dispatcher, config.dispatcher)
+
+    {:ok, [], {:continue, :done}}
+  end
+
+  def handle_continue(:done, state) do
+    {:stop, :normal, state}
+  end
+
+  defp get_value(instance, key) do
+    case Registry.meta(registry(instance), key) do
+      {:ok, value} -> value
+      :error -> raise Brook.Uninitialized, message: "key(#{key}) is not stored in registry"
     end
   rescue
     e -> raise Brook.Uninitialized, message: inspect(e)

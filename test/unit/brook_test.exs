@@ -3,14 +3,13 @@ defmodule BrookTest do
   use Placebo
   import Assertions
 
+  @instance :brook_test
+
   setup do
     {:ok, brook} =
       Brook.start_link(
-        handlers: [Test.Event.Handler],
-        storage: [
-          module: Brook.Storage.Ets,
-          init_arg: []
-        ]
+        instance: @instance,
+        handlers: [Test.Event.Handler]
       )
 
     on_exit(fn ->
@@ -23,87 +22,87 @@ defmodule BrookTest do
   end
 
   test "create entry in store" do
-    :ok = Brook.Event.process(event("CREATE", %{"id" => 123, "name" => "George"}))
+    :ok = Brook.Event.process(@instance, event("CREATE", %{"id" => 123, "name" => "George"}))
 
     assert_async do
-      assert {:ok, %{"id" => 123, "name" => "George"}} == Brook.get(:all, 123)
+      assert {:ok, %{"id" => 123, "name" => "George"}} == Brook.get(@instance, :all, 123)
     end
   end
 
   test "calls dispatcher" do
-    allow Brook.Dispatcher.Default.dispatch(any()), return: :ok
+    allow Brook.Dispatcher.Default.dispatch(any(), any()), return: :ok
     event = event("CREATE", %{"id" => 456, "name" => "Bob"})
-    :ok = Brook.Event.process(event)
+    :ok = Brook.Event.process(@instance, event)
 
     assert_async do
-      assert_called Brook.Dispatcher.Default.dispatch(event)
+      assert_called Brook.Dispatcher.Default.dispatch(@instance, event)
     end
   end
 
   test "does not call storage module when forwarded is true" do
-    :ok = Brook.Event.process(event("CREATE", %{"id" => 123, "name" => "Robert"}, forwarded: true))
+    :ok = Brook.Event.process(@instance, event("CREATE", %{"id" => 123, "name" => "Robert"}, forwarded: true))
 
-    assert nil == Brook.get!(:all, 123)
+    assert nil == Brook.get!(@instance, :all, 123)
   end
 
   test "delete store" do
-    Brook.Event.process(event("CREATE", %{"id" => 123, "name" => "George"}))
-    Brook.Event.process(event("DELETE", %{"id" => 123}))
+    Brook.Event.process(@instance, event("CREATE", %{"id" => 123, "name" => "George"}))
+    Brook.Event.process(@instance, event("DELETE", %{"id" => 123}))
 
     assert_async do
-      assert {:ok, nil} == Brook.get(:all, 123)
+      assert {:ok, nil} == Brook.get(@instance, :all, 123)
     end
   end
 
   test "merge map into view state" do
-    Brook.Event.process(event("CREATE", %{"id" => 1, "name" => "Brody", "age" => 21}))
-    Brook.Event.process(event("UPDATE", %{"id" => 1, "age" => 22, "married" => true}))
+    Brook.Event.process(@instance, event("CREATE", %{"id" => 1, "name" => "Brody", "age" => 21}))
+    Brook.Event.process(@instance, event("UPDATE", %{"id" => 1, "age" => 22, "married" => true}))
 
     assert_async(timeout: 1_000, sleep_time: 100) do
-      assert {:ok, %{"id" => 1, "name" => "Brody", "age" => 22, "married" => true}} == Brook.get(:all, 1)
+      assert {:ok, %{"id" => 1, "name" => "Brody", "age" => 22, "married" => true}} == Brook.get(@instance, :all, 1)
     end
   end
 
   test "merge map into non existant state" do
-    Brook.Event.process(event("UPDATE", %{"id" => 1, "name" => "Brody"}))
+    Brook.Event.process(@instance, event("UPDATE", %{"id" => 1, "name" => "Brody"}))
 
     assert_async(timeout: 1_000, sleep_time: 100) do
-      assert {:ok, %{"id" => 1, "name" => "Brody"}} == Brook.get(:all, 1)
+      assert {:ok, %{"id" => 1, "name" => "Brody"}} == Brook.get(@instance, :all, 1)
     end
   end
 
   test "merge keyword list into view state" do
-    Brook.Event.process(event("CREATE", id: 1, name: "Jeff", age: 21))
-    Brook.Event.process(event("UPDATE", id: 1, age: 22, married: true))
+    Brook.Event.process(@instance, event("CREATE", id: 1, name: "Jeff", age: 21))
+    Brook.Event.process(@instance, event("UPDATE", id: 1, age: 22, married: true))
 
     assert_async do
-      {:ok, actual} = Brook.get(:all, 1)
+      {:ok, actual} = Brook.get(@instance, :all, 1)
       assert keyword_equals([id: 1, name: "Jeff", age: 22, married: true], actual)
     end
   end
 
   test "merge keyword list into not existent state" do
-    Brook.Event.process(event("UPDATE", id: 1, age: 22, married: true))
+    Brook.Event.process(@instance, event("UPDATE", id: 1, age: 22, married: true))
 
     assert_async do
-      {:ok, actual} = Brook.get(:all, 1)
+      {:ok, actual} = Brook.get(@instance, :all, 1)
       assert keyword_equals([id: 1, age: 22, married: true], actual)
     end
   end
 
   test "merge using function into view state" do
-    Brook.Event.process(event("CREATE", %{"id" => 1, "total" => 10}))
-    Brook.Event.process(event("ADD", %{"id" => 1, "add" => 5}))
+    Brook.Event.process(@instance, event("CREATE", %{"id" => 1, "total" => 10}))
+    Brook.Event.process(@instance, event("ADD", %{"id" => 1, "add" => 5}))
 
     assert_async do
-      {:ok, actual} = Brook.get(:all, 1)
+      {:ok, actual} = Brook.get(@instance, :all, 1)
       assert %{"id" => 1, "total" => 15} == actual
     end
   end
 
   test "get_all returns all events" do
-    Brook.Event.process(event("CREATE", %{"id" => 1, "total" => 10}))
-    Brook.Event.process(event("CREATE", %{"id" => 2, "total" => 10}))
+    Brook.Event.process(@instance, event("CREATE", %{"id" => 1, "total" => 10}))
+    Brook.Event.process(@instance, event("CREATE", %{"id" => 2, "total" => 10}))
 
     expected = %{
       1 => %{"id" => 1, "total" => 10},
@@ -111,7 +110,7 @@ defmodule BrookTest do
     }
 
     assert_async(timeout: 1_000, sleep_time: 100) do
-      assert {:ok, expected} == Brook.get_all(:all)
+      assert {:ok, expected} == Brook.get_all(@instance, :all)
     end
   end
 

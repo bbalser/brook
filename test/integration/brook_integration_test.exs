@@ -3,11 +3,14 @@ defmodule Brook.IntegrationTest do
   use Divo
   import Assertions
 
+  @instance :brook_test
+
   setup do
     {:ok, redix} = Redix.start_link(host: "localhost")
     Redix.command!(redix, ["FLUSHALL"])
 
     config = [
+      instance: @instance,
       driver: %{
         module: Brook.Driver.Kafka,
         init_arg: [
@@ -37,12 +40,12 @@ defmodule Brook.IntegrationTest do
   end
 
   test "brook happy path" do
-    Brook.Event.send("CREATE", "testing", %{"id" => 123, "name" => "George"})
-    Brook.Event.send("UPDATE", "testing", %{"id" => 123, "age" => 67})
-    Brook.Event.send("UPDATE_APP_STATE", "testing", %{"name" => "app_state"})
+    Brook.Event.send(@instance, "CREATE", "testing", %{"id" => 123, "name" => "George"})
+    Brook.Event.send(@instance, "UPDATE", "testing", %{"id" => 123, "age" => 67})
+    Brook.Event.send(@instance, "UPDATE_APP_STATE", "testing", %{"name" => "app_state"})
 
     assert_async(timeout: 2_000, sleep_time: 200) do
-      assert {:ok, %{"id" => 123, "name" => "George", "age" => 67}} == Brook.get(:all, 123)
+      assert {:ok, %{"id" => 123, "name" => "George", "age" => 67}} == Brook.get(@instance, :all, 123)
     end
 
     assert_async(timeout: 2_000, sleep_time: 200) do
@@ -51,11 +54,11 @@ defmodule Brook.IntegrationTest do
         "app_state" => %{"name" => "app_state"}
       }
 
-      assert expected == Brook.get_all!(:all)
+      assert expected == Brook.get_all!(@instance, :all)
     end
 
     assert_async(timeout: 2_000, sleep_time: 200) do
-      {:ok, events} = Brook.get_events(:all, 123)
+      {:ok, events} = Brook.get_events(@instance, :all, 123)
       assert 2 == length(events)
 
       create_event = List.first(events)
@@ -67,18 +70,18 @@ defmodule Brook.IntegrationTest do
       assert %{"id" => 123, "age" => 67} == update_event.data
     end
 
-    Brook.Event.send("DELETE", "testing", %{"id" => 123})
+    Brook.Event.send(@instance, "DELETE", "testing", %{"id" => 123})
 
     assert_async(timeout: 2_000, sleep_time: 200) do
-      assert {:ok, nil} == Brook.get(:all, 123)
+      assert {:ok, nil} == Brook.get(@instance, :all, 123)
     end
   end
 
   test "should be able to view state in event handler" do
-    Brook.Event.send("CREATE", "testing", %{"id" => 123, "name" => "George"})
-    Brook.Event.send("READ_VIEW", "testing", %{"id" => 123})
+    Brook.Event.send(@instance, "CREATE", "testing", %{"id" => 123, "name" => "George"})
+    Brook.Event.send(@instance, "READ_VIEW", "testing", %{"id" => 123})
 
-    [{pid, _value}] = Registry.lookup(Brook.Registry, Brook.Server)
+    [{pid, _value}] = Registry.lookup(Brook.Config.registry(@instance), Brook.Server)
 
     alive? = Process.alive?(pid)
     assert true == alive?

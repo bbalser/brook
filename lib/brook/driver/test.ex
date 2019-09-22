@@ -3,15 +3,18 @@ defmodule Brook.Driver.Test do
   use GenServer
   require Logger
 
-  def send_event(_type, event) do
-    GenServer.call(via(), {:send, event})
+  import Brook.Config, only: [registry: 1]
+
+  def send_event(instance, _type, event) do
+    GenServer.call(via(registry(instance)), {:send, event})
   end
 
-  def start_link(_opts) do
-    GenServer.start_link(__MODULE__, [], name: via())
+  def start_link(opts) do
+    instance = Keyword.fetch!(opts, :instance)
+    GenServer.start_link(__MODULE__, [], name: via(registry(instance)))
   end
 
-  def init([]) do
+  def init(_args) do
     {:ok, %{}}
   end
 
@@ -41,7 +44,7 @@ defmodule Brook.Driver.Test do
     {:stop, :invalid_call, state}
   end
 
-  def via() do
-    {:via, Registry, {Brook.Registry, __MODULE__}}
+  def via(registry) do
+    {:via, Registry, {registry, __MODULE__}}
   end
 end

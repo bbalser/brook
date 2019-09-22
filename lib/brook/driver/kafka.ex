@@ -11,8 +11,8 @@ defmodule Brook.Driver.Kafka do
   @behaviour Brook.Driver
   use Supervisor
   require Logger
+  import Brook.Config, only: [registry: 1, get: 2, put: 3]
 
-  @name :brook_driver_elsa
   @send_retry_wait 100
   @send_retry_tries 10
 
@@ -20,8 +20,9 @@ defmodule Brook.Driver.Kafka do
   Start `Brook.Driver` and link to the current process
   """
   @impl Brook.Driver
-  def start_link(init_arg) do
-    Supervisor.start_link(__MODULE__, init_arg)
+  def start_link(args) do
+    instance = Keyword.fetch!(args, :instance)
+    Supervisor.start_link(__MODULE__, args, name: via(registry(instance)))
   end
 
   @doc """
@@ -30,25 +31,27 @@ defmodule Brook.Driver.Kafka do
   """
   @impl Supervisor
   def init(init_arg) do
+    instance = Keyword.fetch!(init_arg, :instance)
+    name = :"brook_driver_kafka_#{instance}"
     topic = Keyword.fetch!(init_arg, :topic)
 
     elsa_group_config = [
-      name: @name,
+      name: name,
       endpoints: Keyword.fetch!(init_arg, :endpoints),
       group: Keyword.fetch!(init_arg, :group),
       topics: [topic],
       handler: Brook.Driver.Kafka.Handler,
-      handler_init_args: [],
+      handler_init_args: %{instance: instance},
       config: Keyword.get(init_arg, :config, [])
     ]
 
     elsa_producer_config = [
-      name: @name,
+      name: name,
       endpoints: Keyword.fetch!(init_arg, :endpoints),
       topic: topic
     ]
 
-    store_topic(topic)
+    put(instance, __MODULE__, %{name: name, topic: topic})
 
     children = [
       {Elsa.Group.Supervisor, elsa_group_config},
@@ -62,35 +65,29 @@ defmodule Brook.Driver.Kafka do
   Send Brook event messages to the event stream topic.
   """
   @impl Brook.Driver
-  def send_event(type, message) do
-    send_event(type, message, @send_retry_tries)
+  def send_event(instance, type, message) do
+    send_event(instance, type, message, @send_retry_tries)
   end
 
-  defp send_event(type, message, 1) do
-    produce_to_kafka(type, message)
+  defp send_event(instance, type, message, 1) do
+    produce_to_kafka(instance, type, message)
   end
 
-  defp send_event(type, message, retries) do
-    case produce_to_kafka(type, message) do
+  defp send_event(instance, type, message, retries) do
+    case produce_to_kafka(instance, type, message) do
       {:error, _message, _non_sent} ->
         Process.sleep(@send_retry_wait)
-        send_event(type, message, retries - 1)
+        send_event(instance, type, message, retries - 1)
 
       result ->
         result
     end
   end
 
-  defp produce_to_kafka(type, message) do
-    Elsa.produce_sync(get_topic(), {type, message}, name: @name)
+  defp produce_to_kafka(instance, type, message) do
+    {:ok, %{name: name, topic: topic}} = get(instance, __MODULE__)
+    Elsa.produce_sync(topic, {type, message}, name: name)
   end
 
-  defp store_topic(topic) do
-    Registry.put_meta(Brook.Registry, :"#{@name}_topic", topic)
-  end
-
-  defp get_topic() do
-    {:ok, topic} = Registry.meta(Brook.Registry, :"#{@name}_topic")
-    topic
-  end
+  defp via(registry), do: {:via, Registry, {registry, __MODULE__}}
 end

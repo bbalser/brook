@@ -10,37 +10,38 @@ defmodule Brook.Storage.Ets do
   """
   use GenServer
   require Logger
+  import Brook.Config, only: [registry: 1]
   @behaviour Brook.Storage
 
   @impl Brook.Storage
-  def persist(registry, %Brook.Event{} = event, collection, key, value) do
-    GenServer.call(via(registry), {:persist, event, collection, key, value})
+  def persist(instance, %Brook.Event{} = event, collection, key, value) do
+    GenServer.call(via(registry(instance)), {:persist, event, collection, key, value})
   end
 
   @impl Brook.Storage
-  def delete(registry, collection, key) do
-    GenServer.call(via(registry), {:delete, collection, key})
+  def delete(instance, collection, key) do
+    GenServer.call(via(registry(instance)), {:delete, collection, key})
   end
 
   @impl Brook.Storage
-  def get(registry, collection, key) do
-    GenServer.call(via(registry), {:get, collection, key})
+  def get(instance, collection, key) do
+    GenServer.call(via(registry(instance)), {:get, collection, key})
   end
 
   @impl Brook.Storage
-  def get_events(registry, collection, key) do
-    GenServer.call(via(registry), {:get_events, collection, key})
+  def get_events(instance, collection, key) do
+    GenServer.call(via(registry(instance)), {:get_events, collection, key})
   end
 
   @impl Brook.Storage
-  def get_all(registry, collection) do
-    GenServer.call(via(registry), {:get_all, collection})
+  def get_all(instance, collection) do
+    GenServer.call(via(registry(instance)), {:get_all, collection})
   end
 
   @impl Brook.Storage
   def start_link(args) do
-    registry = Keyword.fetch!(args, :registry)
-    GenServer.start_link(__MODULE__, args, name: via(registry))
+    instance = Keyword.fetch!(args, :instance)
+    GenServer.start_link(__MODULE__, args, name: via(registry(instance)))
   end
 
   @impl GenServer

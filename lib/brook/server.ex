@@ -22,17 +22,17 @@ defmodule Brook.Server do
   """
   @spec init(term()) :: {:ok, term()}
   def init(%Brook.Config{} = config) do
-    Brook.ViewState.init()
-    config.dispatcher.init(config.registry)
+    Brook.ViewState.init(config.instance)
+    config.dispatcher.init([instance: config.instance])
 
     {:ok, config}
   end
 
   def handle_call({:execute_test_function, event, function}, _from, state) when is_function(function, 0) do
-    register_event(event)
+    register(state.instance, event)
     function.()
-    Brook.ViewState.commit()
-    unregister_event()
+    Brook.ViewState.commit(state.instance)
+    unregister()
     {:reply, :ok, state}
   end
 
@@ -47,7 +47,7 @@ defmodule Brook.Server do
   end
 
   defp process(%Brook.Event{forwarded: false} = event, state) do
-    register_event(event)
+    register(state.instance, event)
 
     Enum.each(state.event_handlers, fn handler ->
       case apply(handler, :handle_event, [event]) do
@@ -68,21 +68,21 @@ defmodule Brook.Server do
       end
     end)
 
-    Brook.ViewState.commit()
+    Brook.ViewState.commit(state.instance)
 
-    apply(state.dispatcher, :dispatch, [event])
-    unregister_event()
+    apply(state.dispatcher, :dispatch, [state.instance, event])
+    unregister()
   end
 
   defp process(%Brook.Event{forwarded: true} = event, state) do
-    register_event(event)
+    register(state.instance, event)
 
     Enum.each(state.event_handlers, fn handler ->
       apply(handler, :handle_event, [event])
     end)
 
-    Brook.ViewState.rollback()
-    unregister_event()
+    Brook.ViewState.rollback(state.instance)
+    unregister()
   end
 
   defp process(event, state) do
@@ -95,7 +95,13 @@ defmodule Brook.Server do
     end
   end
 
-  defp register_event(event), do: Process.put(:brook_current_event, event)
-  defp unregister_event(), do: Process.delete(:brook_current_event)
+  defp register(instance, event) do
+    Process.put(:brook_instance, instance)
+    Process.put(:brook_current_event, event)
+  end
+  defp unregister() do
+    Process.delete(:brook_current_event)
+    Process.delete(:brook_instance)
+  end
   defp via(registry), do: {:via, Registry, {registry, __MODULE__}}
 end

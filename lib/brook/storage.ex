@@ -11,7 +11,7 @@ defmodule Brook.Storage do
   @doc """
   Start the storage driver and link it to the current process.
   """
-  @callback start_link(registry: Registry.registry()) :: GenServer.on_start()
+  @callback start_link(instance: Brook.instance()) :: GenServer.on_start()
 
   @doc """
   Define a child specification for including the storage driver in the Brook
@@ -27,20 +27,20 @@ defmodule Brook.Storage do
   The event is simultaneously stored under a different key to serve as a log of
   all events that produced or modified the value saved to the given key and collection.
   """
-  @callback persist(Registry.registry(), Brook.Event.t(), Brook.view_collection(), Brook.view_key(), Brook.view_value()) ::
+  @callback persist(Brook.instance(), Brook.Event.t(), Brook.view_collection(), Brook.view_key(), Brook.view_value()) ::
               :ok | {:error, Brook.reason()}
 
   @doc """
   Delete the record of a saved value from the view state within a given collection and
   identified by a given key.
   """
-  @callback delete(Registry.registry(), Brook.view_collection(), Brook.view_key()) :: :ok | {:error, Brook.reason()}
+  @callback delete(Brook.instance(), Brook.view_collection(), Brook.view_key()) :: :ok | {:error, Brook.reason()}
 
   @doc """
   Return a value from the persisted view state stored within a collection and
   identified by a key.
   """
-  @callback get(Registry.registry(), Brook.view_collection(), Brook.view_key()) ::
+  @callback get(Brook.instance(), Brook.view_collection(), Brook.view_key()) ::
               {:ok, Brook.view_value()} | {:error, Brook.reason()}
 
   @doc """
@@ -48,13 +48,13 @@ defmodule Brook.Storage do
   under a given collection. Events are returned as a map with the identifying keys as keys and the
   saved values as values.
   """
-  @callback get_all(Registry.registry(), Brook.view_collection()) ::
+  @callback get_all(Brook.instance(), Brook.view_collection()) ::
               {:ok, %{required(Brook.view_key()) => Brook.view_value()}} | {:error, Brook.reason()}
 
   @doc """
   Return a list of events that produced a value saved to the application view state
   within the storage system under a given collection and idetifying key.
   """
-  @callback get_events(Registry.registry(), Brook.view_collection(), Brook.view_key()) ::
+  @callback get_events(Brook.instance(), Brook.view_collection(), Brook.view_key()) ::
               {:ok, list(Brook.Event.t())} | {:error, Brook.reason()}
 end

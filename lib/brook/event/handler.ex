@@ -35,6 +35,10 @@ defmodule Brook.Event.Handler do
       @behaviour Brook.Event.Handler
       @before_compile Brook.Event.Handler
       import Brook.ViewState, only: [create: 3, merge: 3, delete: 2]
+
+      def instance() do
+        Process.get(:brook_instance)
+      end
     end
   end
 

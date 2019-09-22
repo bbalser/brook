@@ -46,8 +46,6 @@ defimpl Brook.Deserializer.Protocol, for: Brook.Event do
     end
   end
 
-  defp deserialize_data({:error, _reason} = error), do: error
-
   defp to_struct({:ok, value}), do: {:ok, struct(Brook.Event, value)}
   defp to_struct({:error, _reason} = error), do: error
 end

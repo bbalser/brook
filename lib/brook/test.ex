@@ -1,40 +1,31 @@
 defmodule Brook.Test do
-  def register() do
-    GenServer.cast(Brook.Driver.Test.via(), {:register, self()})
+  import Brook.Config, only: [registry: 1]
+  def register(instance) do
+    GenServer.cast(Brook.Driver.Test.via(instance), {:register, self()})
   end
 
-  @spec send(Brook.event_type(), Brook.author(), Brook.event()) :: :ok | {:error, Brook.reason()}
-  def send(type, author, data) do
-    register()
-    Brook.Event.send(type, author, data, %{module: Brook.Driver.Default, init_arg: []})
+  @spec send(Brook.instance(), Brook.event_type(), Brook.author(), Brook.event()) :: :ok | {:error, Brook.reason()}
+  def send(instance, type, author, data) do
+    register(instance)
+    Brook.Event.send(instance, type, author, data, %{module: Brook.Driver.Default, init_arg: []})
     :ok
   end
 
-  def save_view_state(event, collection, key, value) do
-    register()
-    storage = Brook.Config.storage()
-    apply(storage.module, :persist, [event, collection, key, value])
+  def with_event(instance, function) when is_function(function, 0) do
+    with_event(instance, fake_event(), function)
   end
 
-  def save_view_state(collection, key, value) do
-    save_view_state(fake_event(), collection, key, value)
+  def with_event(instance, event, function) when is_function(function, 0) do
+    register(instance)
+    GenServer.call({:via, Registry, {registry(instance), Brook.Server}}, {:execute_test_function, event, function})
   end
 
-  def with_event(function) when is_function(function, 0) do
-    with_event(fake_event(), function)
-  end
+  def clear_view_state(instance, collection) do
+    storage = Brook.Config.storage(instance)
 
-  def with_event(event, function) when is_function(function, 0) do
-    register()
-    GenServer.call({:via, Registry, {Brook.Registry, Brook.Server}}, {:execute_test_function, event, function})
-  end
-
-  def clear_view_state(collection) do
-    storage = Brook.Config.storage()
-
-    apply(storage.module, :get_all, [collection])
+    apply(storage.module, :get_all, [instance, collection])
     |> Enum.each(fn {key, _value} ->
-      apply(storage.module, :delete, [collection, key])
+      apply(storage.module, :delete, [instance, collection, key])
     end)
   end
 

@@ -8,12 +8,12 @@ defmodule Brook.Dispatcher do
   @doc """
   Start a Brook dispatcher.
   """
-  @callback init([registry: registry]) :: :ok
+  @callback init([instance: Brook.instance()]) :: :ok
 
   @doc """
   Distributes received messages across multiple nodes.
   """
-  @callback dispatch(Brook.Event.t()) :: :ok
+  @callback dispatch(Brook.instance(), Brook.Event.t()) :: :ok
 end
 
 defmodule Brook.Dispatcher.Default do
@@ -23,9 +23,8 @@ defmodule Brook.Dispatcher.Default do
   Ensures all members of the process group receive notification
   of the received event by a member of the group.
   """
+  import Brook.Config, only: [registry: 1]
   @behaviour Brook.Dispatcher
-
-  @group :brook_servers
 
   @doc """
   Creates and joins the Brook server to the process group
@@ -33,10 +32,10 @@ defmodule Brook.Dispatcher.Default do
   """
   @impl Brook.Dispatcher
   def init(args) do
-    registry = Keyword.fetch!(args, :registry)
-    :pg2.create(@group)
-    [{pid, _}] = Registry.lookup(registry, Brook.Server)
-    :pg2.join(@group, pid)
+    instance = Keyword.fetch!(args, :instance)
+    :pg2.create(instance)
+    [{pid, _}] = registry(instance) |> Registry.lookup(Brook.Server)
+    :pg2.join(instance, pid)
   end
 
   @doc """
@@ -45,10 +44,10 @@ defmodule Brook.Dispatcher.Default do
   tagging the forwarded status of the event to `true`.
   """
   @impl Brook.Dispatcher
-  def dispatch(%Brook.Event{} = event) do
+  def dispatch(instance, %Brook.Event{} = event) do
     forwarded_event = %{event | forwarded: true}
 
-    (:pg2.get_members(@group) -- :pg2.get_local_members(@group))
+    (:pg2.get_members(instance) -- :pg2.get_local_members(instance))
     |> Enum.each(fn pid ->
       GenServer.cast(pid, {:process, forwarded_event})
     end)
@@ -62,7 +61,7 @@ defmodule Brook.Dispatcher.Noop do
     :ok
   end
 
-  def dispatch(_event) do
+  def dispatch(_instance, _event) do
     :ok
   end
 end
