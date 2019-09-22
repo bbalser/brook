@@ -15,9 +15,8 @@ defmodule Brook.Storage.Redis do
         ]
 
   @impl Brook.Storage
-  def persist(event, collection, key, value) do
-    namespace = state(:namespace)
-    redix = state(:redix)
+  def persist(registry, event, collection, key, value) do
+    %{redix: redix, namespace: namespace} = state(registry)
     Logger.debug(fn -> "#{__MODULE__}: persisting #{collection}:#{key}:#{inspect(value)} to redis" end)
 
     with {:ok, serialized_event} <- Brook.Serializer.serialize(event),
@@ -34,18 +33,20 @@ defmodule Brook.Storage.Redis do
   end
 
   @impl Brook.Storage
-  def delete(collection, key) do
-    namespace = state(:namespace)
+  def delete(registry, collection, key) do
+    %{redix: redix, namespace: namespace} = state(registry)
 
-    case redis_delete(state(:redix), [key(namespace, collection, key), events_key(namespace, collection, key)]) do
+    case redis_delete(redix, [key(namespace, collection, key), events_key(namespace, collection, key)]) do
       {:ok, _count} -> :ok
       error_result -> error_result
     end
   end
 
   @impl Brook.Storage
-  def get(collection, key) do
-    case redis_get(state(:redix), key(state(:namespace), collection, key)) do
+  def get(registry, collection, key) do
+    %{redix: redix, namespace: namespace} = state(registry)
+
+    case redis_get(redix, key(namespace, collection, key)) do
       {:ok, nil} ->
         {:ok, nil}
 
@@ -61,9 +62,8 @@ defmodule Brook.Storage.Redis do
   end
 
   @impl Brook.Storage
-  def get_all(collection) do
-    namespace = state(:namespace)
-    redix = state(:redix)
+  def get_all(registry, collection) do
+    %{redix: redix, namespace: namespace} = state(registry)
 
     with {:ok, keys} <- redis_keys(redix, key(namespace, collection, "*")),
          filtered_keys <- Enum.filter(keys, fn key -> !String.ends_with?(key, ":events") end),
@@ -77,8 +77,10 @@ defmodule Brook.Storage.Redis do
   end
 
   @impl Brook.Storage
-  def get_events(collection, key) do
-    case redis_get_all(state(:redix), events_key(state(:namespace), collection, key)) do
+  def get_events(registry, collection, key) do
+    %{redix: redix, namespace: namespace} = state(registry)
+
+    case redis_get_all(redix, events_key(namespace, collection, key)) do
       {:ok, events} ->
         events
         |> Enum.map(&:zlib.gunzip/1)
@@ -93,27 +95,27 @@ defmodule Brook.Storage.Redis do
 
   @impl Brook.Storage
   def start_link(args) do
-    GenServer.start_link(__MODULE__, args, name: via())
+    registry = Keyword.fetch!(args, :registry)
+    GenServer.start_link(__MODULE__, args, name: via(registry))
   end
 
   @impl GenServer
   def init(args) do
+    registry = Keyword.fetch!(args, :registry)
     redix_args = Keyword.fetch!(args, :redix_args)
     namespace = Keyword.fetch!(args, :namespace)
 
-    :ets.new(__MODULE__, [:set, :protected, :named_table])
-    :ets.insert(__MODULE__, {:namespace, namespace})
-
     {:ok, redix} = Redix.start_link(redix_args)
-    :ets.insert(__MODULE__, {:redix, redix})
+
+    Registry.put_meta(registry, __MODULE__, %{namespace: namespace, redix: redix})
 
     {:ok, %{namespace: namespace, redix: redix}}
   end
 
-  defp state(key) do
-    case :ets.lookup(__MODULE__, key) do
-      [] -> raise not_initialized_exception()
-      [{^key, value}] -> value
+  defp state(registry) do
+    case Registry.meta(registry, __MODULE__) do
+      {:ok, value} -> value
+      :error -> raise not_initialized_exception()
     end
   end
 
@@ -134,7 +136,7 @@ defmodule Brook.Storage.Redis do
   defp ok(value), do: {:ok, value}
   defp key(namespace, collection, key), do: "#{namespace}:#{collection}:#{key}"
   defp events_key(namespace, collection, key), do: "#{namespace}:#{collection}:#{key}:events"
-  defp via(), do: {:via, Registry, {Brook.Registry, __MODULE__}}
+  defp via(registry), do: {:via, Registry, {registry, __MODULE__}}
 
   defp deserialize_data(%{"key" => key, "value" => value}) do
     {:ok, deserialized_value} = Brook.Deserializer.deserialize(value)
