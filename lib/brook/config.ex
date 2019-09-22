@@ -4,10 +4,11 @@ defmodule Brook.Config do
   of inputs.
   """
   @default_driver %{module: Brook.Driver.Default, init_arg: []}
+  @default_storage %{module: Brook.Storage.Ets, init_arg: []}
+  @default_dispatcher Brook.Dispatcher.Default
 
-  @table_name :brook_config_table
-
-  defstruct driver: nil,
+  defstruct name: nil,
+            driver: nil,
             event_handlers: nil,
             storage: nil,
             dispatcher: nil
@@ -20,42 +21,50 @@ defmodule Brook.Config do
   @spec new(keyword()) :: map()
   def new(opts) do
     %__MODULE__{
+      name: Keyword.fetch!(opts, :name),
       driver: Keyword.get(opts, :driver, @default_driver) |> Enum.into(%{}),
       event_handlers: Keyword.fetch!(opts, :handlers),
-      storage: Keyword.fetch!(opts, :storage) |> Enum.into(%{}),
-      dispatcher: Keyword.get(opts, :dispatcher, Brook.Dispatcher.Default)
+      storage: Keyword.get(opts, :storage, @default_storage) |> Enum.into(%{}),
+      dispatcher: Keyword.get(opts, :dispatcher, @default_dispatcher)
     }
   end
 
   def store(%Brook.Config{} = config) do
-    :ets.new(@table_name, [:set, :protected, :named_table])
+    table = table_name(config.name)
+    :ets.new(table, [:set, :protected, :named_table])
 
-    :ets.insert(@table_name, {:driver, config.driver})
-    :ets.insert(@table_name, {:event_handlers, config.event_handlers})
-    :ets.insert(@table_name, {:storage, config.storage})
-    :ets.insert(@table_name, {:dispatcher, config.dispatcher})
+    :ets.insert(table, {:driver, config.driver})
+    :ets.insert(table, {:event_handlers, config.event_handlers})
+    :ets.insert(table, {:storage, config.storage})
+    :ets.insert(table, {:dispatcher, config.dispatcher})
 
     config
   end
 
-  def storage() do
-    get(:storage)
+  def registry(name) do
+    :"brook_registry_#{name}"
   end
 
-  def driver() do
-    get(:driver)
+  def storage(name) do
+    get(name, :storage)
   end
 
-  def event_handlers() do
-    get(:event_handlers)
+  def driver(name) do
+    get(name, :driver)
   end
 
-  def dispatcher() do
-    get(:dispatcher)
+  def event_handlers(name) do
+    get(name, :event_handlers)
   end
 
-  defp get(key) do
-    case :ets.lookup(@table_name, key) do
+  def dispatcher(name) do
+    get(name, :dispatcher)
+  end
+
+  defp table_name(name), do: :"brook_config_table_#{name}"
+
+  defp get(name, key) do
+    case :ets.lookup(table_name(name), key) do
       [] -> raise Brook.Uninitialized, message: "key(#{key}) is not stored in table"
       [{^key, value}] -> value
     end

@@ -12,62 +12,61 @@ defmodule Brook.Storage.Ets do
   require Logger
   @behaviour Brook.Storage
 
-  @table :brook_test_value
-
   @impl Brook.Storage
-  def persist(%Brook.Event{} = event, collection, key, value) do
-    GenServer.call(__MODULE__, {:persist, event, collection, key, value})
+  def persist(registry, %Brook.Event{} = event, collection, key, value) do
+    GenServer.call(via(registry), {:persist, event, collection, key, value})
   end
 
   @impl Brook.Storage
-  def delete(collection, key) do
-    GenServer.call(__MODULE__, {:delete, collection, key})
+  def delete(registry, collection, key) do
+    GenServer.call(via(registry), {:delete, collection, key})
   end
 
   @impl Brook.Storage
-  def get(collection, key) do
-    GenServer.call(__MODULE__, {:get, collection, key})
+  def get(registry, collection, key) do
+    GenServer.call(via(registry), {:get, collection, key})
   end
 
   @impl Brook.Storage
-  def get_events(collection, key) do
-    GenServer.call(__MODULE__, {:get_events, collection, key})
+  def get_events(registry, collection, key) do
+    GenServer.call(via(registry), {:get_events, collection, key})
   end
 
   @impl Brook.Storage
-  def get_all(collection) do
-    GenServer.call(__MODULE__, {:get_all, collection})
+  def get_all(registry, collection) do
+    GenServer.call(via(registry), {:get_all, collection})
   end
 
   @impl Brook.Storage
-  def start_link(_opts) do
-    GenServer.start_link(__MODULE__, [], name: __MODULE__)
+  def start_link(args) do
+    registry = Keyword.fetch!(args, :registry)
+    GenServer.start_link(__MODULE__, args, name: via(registry))
   end
 
   @impl GenServer
-  def init([]) do
-    :ets.new(@table, [:named_table, :set, :protected])
+  def init(_args) do
+    table = :ets.new(nil, [:set, :protected])
 
-    {:ok, []}
+    {:ok, %{table: table}}
   end
 
   @impl GenServer
   def handle_call({:persist, event, collection, key, value}, _from, state) do
-    events = get_existing_events({collection, key})
-    :ets.insert(@table, {{collection, key}, value, events ++ [event]})
+    events = get_existing_events(state, {collection, key})
+    :ets.insert(state.table, {{collection, key}, value, events ++ [event]})
 
     {:reply, :ok, state}
   end
 
   @impl GenServer
   def handle_call({:delete, collection, key}, _from, state) do
-    :ets.delete(@table, {collection, key})
+    :ets.delete(state.table, {collection, key})
     {:reply, :ok, state}
   end
 
   @impl GenServer
   def handle_call({:get, collection, key}, _from, state) do
-    case :ets.lookup(@table, {collection, key}) do
+    case :ets.lookup(state.table, {collection, key}) do
       [{_key, value, _events}] -> value
       _ -> nil
     end
@@ -77,12 +76,12 @@ defmodule Brook.Storage.Ets do
 
   @impl GenServer
   def handle_call({:get_events, collection, key}, _from, state) do
-    {:reply, get_existing_events({collection, key}) |> ok(), state}
+    {:reply, get_existing_events(state, {collection, key}) |> ok(), state}
   end
 
   @impl GenServer
   def handle_call({:get_all, collection}, _from, state) do
-    :ets.match_object(@table, {{collection, :_}, :_, :_})
+    :ets.match_object(state.table, {{collection, :_}, :_, :_})
     |> Enum.map(fn {{_collection, key}, value, _events} ->
       {key, value}
     end)
@@ -91,8 +90,8 @@ defmodule Brook.Storage.Ets do
     |> reply(state)
   end
 
-  defp get_existing_events(key) do
-    case :ets.lookup(@table, key) do
+  defp get_existing_events(state, key) do
+    case :ets.lookup(state.table, key) do
       [] -> []
       [{^key, _value, events}] -> events
     end
@@ -100,4 +99,5 @@ defmodule Brook.Storage.Ets do
 
   defp ok(value), do: {:ok, value}
   defp reply(value, state), do: {:reply, value, state}
+  defp via(registry), do: {:via, Registry, {registry, __MODULE__}}
 end

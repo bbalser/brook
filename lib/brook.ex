@@ -79,6 +79,9 @@ defmodule Brook do
   @typedoc "The potential negative return value of a view state query."
   @type reason :: term()
 
+  @typedoc "The name of the registry used for current instance of brook"
+  @type registry :: atom()
+
   defmodule UnsupportedMerge do
     @moduledoc """
     An exception for handling bad merge operations when attempting to save
