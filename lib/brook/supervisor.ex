@@ -9,7 +9,8 @@ defmodule Brook.Supervisor do
   Start a Brook supervisor and link it to the current process.
   """
   def start_link(opts) do
-    Supervisor.start_link(__MODULE__, opts, name: __MODULE__)
+    instance = Keyword.fetch!(opts, :instance)
+    Supervisor.start_link(__MODULE__, opts, name: :"brook_supervisor_#{instance}")
   end
 
   @doc """
