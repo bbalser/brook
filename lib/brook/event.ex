@@ -54,7 +54,8 @@ defmodule Brook.Event do
     send(instance, type, author, event, Brook.Config.driver(instance))
   end
 
-  @spec send(Brook.instance(), Brook.event_type(), Brook.author(), Brook.event(), driver()) :: :ok | {:error, Brook.reason()}
+  @spec send(Brook.instance(), Brook.event_type(), Brook.author(), Brook.event(), driver()) ::
+          :ok | {:error, Brook.reason()}
   def send(instance, type, author, event, driver) do
     brook_event =
       Brook.Event.new(

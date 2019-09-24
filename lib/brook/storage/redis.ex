@@ -24,9 +24,13 @@ defmodule Brook.Storage.Redis do
          gzipped_serialized_event <- :zlib.gzip(serialized_event),
          {:ok, serialized_value} <- Brook.Serializer.serialize(value),
          {:ok, "OK"} <-
-           redis_set(redix, key(namespace, collection, key), Jason.encode!(%{key: key, value: serialized_value})),
+           redis_set(
+             redix,
+             key(namespace, collection, key),
+             Jason.encode!(%{"key" => key, "value" => serialized_value})
+           ),
          {:ok, _count} <-
-           redis_append(redix, events_key(namespace, collection, key), gzipped_serialized_event) do
+           redis_append(redix, events_key(namespace, collection, key, event.type), gzipped_serialized_event) do
       :ok
     end
   rescue
@@ -37,9 +41,9 @@ defmodule Brook.Storage.Redis do
   def delete(instance, collection, key) do
     %{redix: redix, namespace: namespace} = state(instance)
 
-    case redis_delete(redix, [key(namespace, collection, key), events_key(namespace, collection, key)]) do
-      {:ok, _count} -> :ok
-      error_result -> error_result
+    with {:ok, event_keys} <- redis_keys(redix, events_key(namespace, collection, key, "*")),
+         {:ok, _count} <- redis_delete(redix, [key(namespace, collection, key) | event_keys]) do
+      :ok
     end
   end
 
@@ -67,10 +71,9 @@ defmodule Brook.Storage.Redis do
     %{redix: redix, namespace: namespace} = state(instance)
 
     with {:ok, keys} <- redis_keys(redix, key(namespace, collection, "*")),
-         filtered_keys <- Enum.filter(keys, fn key -> !String.ends_with?(key, ":events") end),
-         {:ok, encoded_values} <- redis_multiget(redix, filtered_keys) do
-      encoded_values
-      |> Enum.map(&Jason.decode!/1)
+         {:ok, encoded_values} <- redis_multiget(redix, keys),
+         {:ok, decoded_values} <- safe_map(encoded_values, &Jason.decode/1) do
+      decoded_values
       |> Enum.map(&deserialize_data/1)
       |> Enum.into(%{})
       |> ok()
@@ -81,16 +84,14 @@ defmodule Brook.Storage.Redis do
   def get_events(instance, collection, key) do
     %{redix: redix, namespace: namespace} = state(instance)
 
-    case redis_get_all(redix, events_key(namespace, collection, key)) do
-      {:ok, events} ->
-        events
-        |> Enum.map(&:zlib.gunzip/1)
-        |> Enum.map(&Brook.Deserializer.deserialize/1)
-        |> Enum.map(fn {:ok, event} -> event end)
-        |> ok()
-
-      error_result ->
-        error_result
+    with {:ok, event_keys} <- redis_keys(redix, events_key(namespace, collection, key, "*")),
+         {:ok, nested_events} <- safe_map(event_keys, &redis_get_all(redix, &1)),
+         compressed_events <- List.flatten(nested_events),
+         serialized_events <- Enum.map(compressed_events, &:zlib.gunzip/1),
+         {:ok, events} <- safe_map(serialized_events, &Brook.Deserializer.deserialize/1) do
+      events
+      |> Enum.sort_by(fn event -> event.create_ts end)
+      |> ok()
     end
   end
 
@@ -120,6 +121,15 @@ defmodule Brook.Storage.Redis do
     end
   end
 
+  defp safe_map(list, function) do
+    Enum.reduce_while(list, {:ok, []}, fn value, {:ok, list} ->
+      case function.(value) do
+        {:ok, result} -> {:cont, {:ok, [result | list]}}
+        {:error, reason} -> {:halt, {:error, reason}}
+      end
+    end)
+  end
+
   defp not_initialized_exception() do
     Brook.Uninitialized.exception(message: "#{__MODULE__} is not initialized yet!")
   end
@@ -135,8 +145,8 @@ defmodule Brook.Storage.Redis do
   defp redis_multiget(redix, keys), do: Redix.command(redix, ["MGET" | keys])
 
   defp ok(value), do: {:ok, value}
-  defp key(namespace, collection, key), do: "#{namespace}:#{collection}:#{key}"
-  defp events_key(namespace, collection, key), do: "#{namespace}:#{collection}:#{key}:events"
+  defp key(namespace, collection, key), do: "#{namespace}:state:#{collection}:#{key}"
+  defp events_key(namespace, collection, key, event_type), do: "#{namespace}:events:#{collection}:#{key}:#{event_type}"
   defp via(registry), do: {:via, Registry, {registry, __MODULE__}}
 
   defp deserialize_data(%{"key" => key, "value" => value}) do

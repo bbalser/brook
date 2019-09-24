@@ -23,7 +23,7 @@ defmodule Brook.Server do
   @spec init(term()) :: {:ok, term()}
   def init(%Brook.Config{} = config) do
     Brook.ViewState.init(config.instance)
-    config.dispatcher.init([instance: config.instance])
+    config.dispatcher.init(instance: config.instance)
 
     {:ok, config}
   end
@@ -99,9 +99,11 @@ defmodule Brook.Server do
     Process.put(:brook_instance, instance)
     Process.put(:brook_current_event, event)
   end
+
   defp unregister() do
     Process.delete(:brook_current_event)
     Process.delete(:brook_instance)
   end
+
   defp via(registry), do: {:via, Registry, {registry, __MODULE__}}
 end

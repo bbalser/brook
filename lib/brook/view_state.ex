@@ -7,7 +7,8 @@ defmodule Brook.ViewState do
     :ets.new(table(instance), [:set, :protected, :named_table])
   end
 
-  @spec get(Brook.instance(), Brook.view_collection(), Brook.view_key()) :: {:ok, Brook.view_value()} | {:error, Brook.reason()}
+  @spec get(Brook.instance(), Brook.view_collection(), Brook.view_key()) ::
+          {:ok, Brook.view_value()} | {:error, Brook.reason()}
   def get(instance, collection, key) do
     case :ets.lookup(table(instance), {collection, key}) do
       [] ->
@@ -89,8 +90,11 @@ defmodule Brook.ViewState do
   defp assert_instance() do
     case Process.get(:brook_instance) != nil do
       false ->
-        raise Brook.InvalidInstance, message: "No Instance found: can only be called in Brook.Event.Handler implementation"
-      true -> true
+        raise Brook.InvalidInstance,
+          message: "No Instance found: can only be called in Brook.Event.Handler implementation"
+
+      true ->
+        true
     end
   end
 

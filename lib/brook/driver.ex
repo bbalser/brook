@@ -13,7 +13,7 @@ defmodule Brook.Driver do
   @doc """
   Start a Brook driver and link to the current process.
   """
-  @callback start_link([instance: Brook.instance()]) :: GenServer.on_start()
+  @callback start_link(instance: Brook.instance()) :: GenServer.on_start()
 
   @doc """
   Return a child specification for the Brook driver for inclusion

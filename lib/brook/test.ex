@@ -1,5 +1,6 @@
 defmodule Brook.Test do
   import Brook.Config, only: [registry: 1]
+
   def register(instance) do
     GenServer.cast(Brook.Driver.Test.via(instance), {:register, self()})
   end

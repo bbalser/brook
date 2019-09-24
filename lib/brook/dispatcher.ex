@@ -8,7 +8,7 @@ defmodule Brook.Dispatcher do
   @doc """
   Start a Brook dispatcher.
   """
-  @callback init([instance: Brook.instance()]) :: :ok
+  @callback init(instance: Brook.instance()) :: :ok
 
   @doc """
   Distributes received messages across multiple nodes.

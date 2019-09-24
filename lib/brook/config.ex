@@ -24,6 +24,7 @@ defmodule Brook.Config do
   @spec new(keyword()) :: map()
   def new(opts) do
     instance = Keyword.fetch!(opts, :instance)
+
     %__MODULE__{
       instance: instance,
       driver: Keyword.get(opts, :driver, @default_driver) |> Enum.into(%{}),
