@@ -118,6 +118,8 @@ defmodule Brook.Storage.Redis do
 
     put(instance, __MODULE__, %{namespace: namespace, redix: redix, event_limits: event_limits})
 
+    Brook.Storage.Redis.Migration.migrate(instance, redix, namespace)
+
     {:ok, %{namespace: namespace, redix: redix, event_limits: event_limits}}
   end
 
