@@ -59,7 +59,24 @@ defmodule Brook.Storage.RedisTest do
     test "will return an error tuple when redis returns an error" do
       allow Redix.command(any(), any()), return: {:error, :some_failure}
 
-      assert {:error, :some_failure} == Redis.persist(@instance, :event1, "people", "key1", %{one: 1})
+      event = Brook.Event.new(type: "create", author: "testing", data: "data")
+      assert {:error, :some_failure} == Redis.persist(@instance, event, "people", "key1", %{one: 1})
+    end
+
+    test "will only save configured number for event with restrictions" do
+      Enum.each(1..10, fn i ->
+        create_event = Brook.Event.new(type: "create", author: "testing", data: i)
+        Redis.persist(@instance, create_event, "people", "key4", %{"name" => "joe"})
+        restricted_event = Brook.Event.new(type: "restricted", author: "testing", data: i)
+        Redis.persist(@instance, restricted_event, "people", "key4", %{"name" => "joe"})
+      end)
+
+      {:ok, events} = Redis.get_events(@instance, "people", "key4")
+      grouped_events = Enum.group_by(events, fn event -> event.type end)
+
+      assert 10 == length(grouped_events["create"])
+      assert 5 == length(grouped_events["restricted"])
+      assert [6, 7, 8, 9, 10] == Enum.map(grouped_events["restricted"], fn x -> x.data end)
     end
   end
 
@@ -166,7 +183,14 @@ defmodule Brook.Storage.RedisTest do
   defp start_redis(_context) do
     registry_name = Brook.Config.registry(@instance)
     {:ok, registry} = Registry.start_link(name: registry_name, keys: :unique)
-    {:ok, redis} = Redis.start_link(instance: @instance, namespace: @namespace, redix_args: [host: "localhost"])
+
+    {:ok, redis} =
+      Redis.start_link(
+        instance: @instance,
+        namespace: @namespace,
+        redix_args: [host: "localhost"],
+        event_limits: %{"restricted" => 5}
+      )
 
     on_exit(fn ->
       kill(redis)

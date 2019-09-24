@@ -17,11 +17,12 @@ defmodule Brook.Storage.Redis do
 
   @impl Brook.Storage
   def persist(instance, event, collection, key, value) do
-    %{redix: redix, namespace: namespace} = state(instance)
+    %{redix: redix, namespace: namespace, event_limits: event_limits} = state(instance)
     Logger.debug(fn -> "#{__MODULE__}: persisting #{collection}:#{key}:#{inspect(value)} to redis" end)
 
     with {:ok, serialized_event} <- Brook.Serializer.serialize(event),
          gzipped_serialized_event <- :zlib.gzip(serialized_event),
+         event_limit <- Map.get(event_limits, event.type, :no_limit),
          {:ok, serialized_value} <- Brook.Serializer.serialize(value),
          {:ok, "OK"} <-
            redis_set(
@@ -30,7 +31,12 @@ defmodule Brook.Storage.Redis do
              Jason.encode!(%{"key" => key, "value" => serialized_value})
            ),
          {:ok, _count} <-
-           redis_append(redix, events_key(namespace, collection, key, event.type), gzipped_serialized_event) do
+           redis_append(
+             redix,
+             events_key(namespace, collection, key, event.type),
+             gzipped_serialized_event,
+             event_limit
+           ) do
       :ok
     end
   rescue
@@ -106,12 +112,13 @@ defmodule Brook.Storage.Redis do
     instance = Keyword.fetch!(args, :instance)
     redix_args = Keyword.fetch!(args, :redix_args)
     namespace = Keyword.fetch!(args, :namespace)
+    event_limits = Keyword.get(args, :event_limits, %{})
 
     {:ok, redix} = Redix.start_link(redix_args)
 
-    put(instance, __MODULE__, %{namespace: namespace, redix: redix})
+    put(instance, __MODULE__, %{namespace: namespace, redix: redix, event_limits: event_limits})
 
-    {:ok, %{namespace: namespace, redix: redix}}
+    {:ok, %{namespace: namespace, redix: redix, event_limits: event_limits}}
   end
 
   defp state(instance) do
@@ -137,7 +144,22 @@ defmodule Brook.Storage.Redis do
   defp redis_get(redix, key), do: Redix.command(redix, ["GET", key])
   defp redis_get_all(redix, key), do: Redix.command(redix, ["LRANGE", key, 0, -1])
   defp redis_set(redix, key, value), do: Redix.command(redix, ["SET", key, value])
-  defp redis_append(redix, key, value), do: Redix.command(redix, ["RPUSH", key, value])
+
+  defp redis_append(redix, key, value, limit) do
+    with {:ok, count} <- Redix.command(redix, ["RPUSH", key, value]),
+         :ok <- redis_trim(redix, key, limit) do
+      {:ok, count}
+    end
+  end
+
+  defp redis_trim(_redix, _key, :no_limit), do: :ok
+
+  defp redis_trim(redix, key, limit) do
+    with {:ok, "OK"} <- Redix.command(redix, ["LTRIM", key, -limit, -1]) do
+      :ok
+    end
+  end
+
   defp redis_keys(redix, key), do: Redix.command(redix, ["KEYS", key])
   defp redis_delete(redix, keys), do: Redix.command(redix, ["DEL" | keys])
 
