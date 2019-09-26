@@ -7,13 +7,10 @@ defimpl Brook.Serializer.Protocol, for: Brook.Event do
   `Brook.Event` struct type.
   """
 
-  @struct_key "__brook_struct__"
-
   def serialize(%Brook.Event{} = event) do
     %{"type" => event.type, "author" => event.author, "create_ts" => event.create_ts, "forwarded" => event.forwarded}
-    |> Map.put(@struct_key, Brook.Event)
+    |> Map.put(Brook.Serializer.struct_key(), Brook.Event)
     |> serialize_data(event.data)
-    |> encode()
   end
 
   defp serialize_data(message, data) do
@@ -22,9 +19,6 @@ defimpl Brook.Serializer.Protocol, for: Brook.Event do
       error_result -> error_result
     end
   end
-
-  defp encode({:ok, value}), do: Jason.encode(value)
-  defp encode({:error, _reason} = error), do: error
 end
 
 defimpl Brook.Deserializer.Protocol, for: Brook.Event do

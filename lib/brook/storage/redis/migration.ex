@@ -41,6 +41,7 @@ defmodule Brook.Storage.Redis.Migration do
 
   defp move_old_entry(redix, view_state) do
     key = view_state["redis_key"]
+
     commands = [
       ["RENAME", key, "old:" <> key],
       ["EXPIRE", "old:" <> key, @expiration],
