@@ -4,7 +4,7 @@ defmodule Brook.MixProject do
   def project do
     [
       app: :brook,
-      version: "0.4.0",
+      version: "0.4.1",
       elixir: "~> 1.8",
       description: description(),
       package: package(),
@@ -27,7 +27,7 @@ defmodule Brook.MixProject do
     [
       {:brook_serializer, "~> 2.0"},
       {:redix, "~> 0.10.2"},
-      {:elsa, "~> 0.9.0"},
+      {:elsa, "~> 0.10"},
       {:placebo, "~> 1.2", only: [:dev, :test, :integration]},
       {:assertions, "~> 0.14.1", only: [:test, :integration]},
       {:divo, "~> 1.1", only: [:dev, :integration]},

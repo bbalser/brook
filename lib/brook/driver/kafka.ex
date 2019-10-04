@@ -32,30 +32,29 @@ defmodule Brook.Driver.Kafka do
   @impl Supervisor
   def init(init_arg) do
     instance = Keyword.fetch!(init_arg, :instance)
-    name = :"brook_driver_kafka_#{instance}"
+    connection = :"brook_driver_kafka_#{instance}"
     topic = Keyword.fetch!(init_arg, :topic)
 
-    elsa_group_config = [
-      name: name,
+    elsa_config = [
       endpoints: Keyword.fetch!(init_arg, :endpoints),
-      group: Keyword.fetch!(init_arg, :group),
-      topics: [topic],
-      handler: Brook.Driver.Kafka.Handler,
-      handler_init_args: %{instance: instance},
-      config: Keyword.get(init_arg, :config, [])
+      connection: connection,
+      producer: [
+        topic: topic,
+        config: Keyword.get(init_arg, :producer_config, [])
+      ],
+      group_consumer: [
+        group: Keyword.fetch!(init_arg, :group),
+        topics: [topic],
+        handler: Brook.Driver.Kafka.Handler,
+        handler_init_args: %{instance: instance},
+        config: Keyword.get(init_arg, :consumer_config, [])
+      ]
     ]
 
-    elsa_producer_config = [
-      name: name,
-      endpoints: Keyword.fetch!(init_arg, :endpoints),
-      topic: topic
-    ]
-
-    put(instance, __MODULE__, %{name: name, topic: topic})
+    put(instance, __MODULE__, %{connection: connection, topic: topic})
 
     children = [
-      {Elsa.Group.Supervisor, elsa_group_config},
-      {Elsa.Producer.Supervisor, elsa_producer_config}
+      {Elsa.Supervisor, elsa_config}
     ]
 
     Supervisor.init(children, strategy: :one_for_one)
@@ -85,8 +84,8 @@ defmodule Brook.Driver.Kafka do
   end
 
   defp produce_to_kafka(instance, type, message) do
-    {:ok, %{name: name, topic: topic}} = get(instance, __MODULE__)
-    Elsa.produce_sync(topic, {type, message}, name: name)
+    {:ok, %{connection: connection, topic: topic}} = get(instance, __MODULE__)
+    Elsa.produce(connection, topic, {type, message})
   end
 
   defp via(registry), do: {:via, Registry, {registry, __MODULE__}}

@@ -14,14 +14,12 @@ your list of dependencies in `mix.exs`:
 ```elixir
 def deps do
   [
-    {:brook, "~> 0.1.0"}
+    {:brook, "~> 0.4"}
   ]
 end
 ```
 
-Documentation can be generated with [ExDoc](https://github.com/elixir-lang/ex_doc)
-and published on [HexDocs](https://hexdocs.pm). Once published, the docs can
-be found at [https://hexdocs.pm/brook](https://hexdocs.pm/brook).
+Documentation can be found at [https://hexdocs.pm/brook](https://hexdocs.pm/brook).
 
 ## Testing
 
