@@ -17,7 +17,7 @@ defmodule Brook.IntegrationTest do
           endpoints: [localhost: 9092],
           topic: "test",
           group: "test-group",
-          config: [
+          consumer_config: [
             begin_offset: :earliest
           ]
         ]
