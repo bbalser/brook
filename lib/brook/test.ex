@@ -2,7 +2,7 @@ defmodule Brook.Test do
   import Brook.Config, only: [registry: 1]
 
   def register(instance) do
-    GenServer.cast(Brook.Driver.Test.via(instance), {:register, self()})
+    GenServer.cast(Brook.Driver.Test.via(registry(instance)), {:register, self()})
   end
 
   @spec send(Brook.instance(), Brook.event_type(), Brook.author(), Brook.event()) :: :ok | {:error, Brook.reason()}
