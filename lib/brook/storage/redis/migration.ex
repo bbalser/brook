@@ -30,6 +30,7 @@ defmodule Brook.Storage.Redis.Migration do
     old_events =
       Redix.command!(redix, ["LRANGE", events_key, 0, -1])
       |> Enum.map(&:erlang.binary_to_term/1)
+      |> Enum.map(&ensure_event_fields/1)
 
     Map.put(view_state, "events", old_events)
   end
@@ -50,5 +51,12 @@ defmodule Brook.Storage.Redis.Migration do
     ]
 
     Redix.pipeline!(redix, commands)
+  end
+
+  defp ensure_event_fields(event) do
+    event
+    |> Map.update(:author, "migrated_default", fn author -> author end)
+    |> Map.update(:create_ts, "00:00:00.000000", fn ts -> ts end)
+    |> Map.update(:forwarded, false, fn boolean -> boolean end)
   end
 end
