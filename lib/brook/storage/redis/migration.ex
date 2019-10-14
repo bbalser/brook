@@ -56,7 +56,7 @@ defmodule Brook.Storage.Redis.Migration do
   defp ensure_event_fields(event) do
     event
     |> Map.update(:author, "migrated_default", fn author -> author end)
-    |> Map.update(:create_ts, "00:00:00.000000", fn ts -> ts end)
+    |> Map.update(:create_ts, 0, fn ts -> ts end)
     |> Map.update(:forwarded, false, fn boolean -> boolean end)
   end
 end
