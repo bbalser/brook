@@ -69,7 +69,7 @@ defmodule Brook.Storage.Redis.MigrationTest do
     Migration.migrate(@instance, redix, @namespace)
 
     assert {:ok, [%Brook.Event{create_ts: timestamp}]} = Redis.get_events(@instance, @collection, 4)
-    assert timestamp == "00:00:00.000000"
+    assert timestamp == 0
   end
 
   defp start_redis(_context) do
