@@ -34,6 +34,44 @@ defmodule Brook.Storage.Redis.MigrationTest do
     assert 0 == Redix.command!(redix, ["EXISTS", "#{@namespace}:#{@collection}:1:events"])
   end
 
+  test "defaults author name if author not present", %{redix: redix} do
+    view_state = %{"three" => 3}
+    redis_value = %{key: 3, value: view_state}
+    event = struct(Brook.Event, type: "type3", data: 3, create_ts: 0) |> Map.delete(:author)
+
+    Redix.command!(redix, ["SET", "#{@namespace}:#{@collection}:3", :erlang.term_to_binary(redis_value)])
+
+    Redix.command!(redix, [
+      "RPUSH",
+      "#{@namespace}:#{@collection}:3:events",
+      :erlang.term_to_binary(event, compressed: 9)
+    ])
+
+    Migration.migrate(@instance, redix, @namespace)
+
+    assert {:ok, [%Brook.Event{author: author}]} = Redis.get_events(@instance, @collection, 3)
+    assert author == "migrated_default"
+  end
+
+  test "defaults creation timestamp if create_ts not present", %{redix: redix} do
+    view_state = %{"four" => 4}
+    redis_value = %{key: 4, value: view_state}
+    event = struct(Brook.Event, type: "type4", data: 4) |> Map.delete(:create_ts)
+
+    Redix.command!(redix, ["SET", "#{@namespace}:#{@collection}:4", :erlang.term_to_binary(redis_value)])
+
+    Redix.command!(redix, [
+      "RPUSH",
+      "#{@namespace}:#{@collection}:4:events",
+      :erlang.term_to_binary(event, compressed: 9)
+    ])
+
+    Migration.migrate(@instance, redix, @namespace)
+
+    assert {:ok, [%Brook.Event{create_ts: timestamp}]} = Redis.get_events(@instance, @collection, 4)
+    assert timestamp == "00:00:00.000000"
+  end
+
   defp start_redis(_context) do
     registry_name = Brook.Config.registry(@instance)
     {:ok, registry} = Registry.start_link(name: registry_name, keys: :unique)
