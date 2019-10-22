@@ -130,6 +130,62 @@ defmodule Brook.Event.Kafka.Serializer.JsonTest do
 
       assert {:error, reason} == Brook.Deserializer.deserialize(%TempStruct{}, data)
     end
+
+    test "decodes json into struct for event serialized using v0.3.x brook" do
+      event_from_older_brook =
+        Jason.encode!(%{
+          author: "Me",
+          create_ts: 1_571_323_696_177,
+          type: "dataset:update",
+          data:
+            Jason.encode!(%{
+              name: "You",
+              age: 5,
+              location: "Here"
+            }),
+          __struct__: "Elixir.TempStruct"
+        })
+
+      {:ok, deserialized_event} = Brook.Deserializer.deserialize(struct(Brook.Event), event_from_older_brook)
+
+      assert %TempStruct{} = deserialized_event.data
+    end
+
+    test "returns error when event serialized using v0.3.x brook has an unknown module" do
+      event_from_older_brook =
+        Jason.encode!(%{
+          author: "Me",
+          create_ts: 1_571_323_696_177,
+          type: "dataset:update",
+          data:
+            Jason.encode!(%{
+              name: "You",
+              age: 5,
+              location: "Here"
+            }),
+          __struct__: "Elixir.ModuleNotFound"
+        })
+
+      assert {:error, _} = Brook.Deserializer.deserialize(struct(Brook.Event), event_from_older_brook)
+    end
+
+    test "returns error when event serialized using v0.3.x brook has a module that is not a struct" do
+      event_from_older_brook =
+        Jason.encode!(%{
+          author: "Me",
+          create_ts: 1_571_323_696_177,
+          type: "dataset:update",
+          data:
+            Jason.encode!(%{
+              name: "You",
+              age: 5,
+              location: "Here"
+            }),
+          __struct__: "Elixir.TempModule"
+        })
+
+      assert {:error, _} = Brook.Deserializer.deserialize(struct(Brook.Event), event_from_older_brook)
+    end
   end
 
   defp encode({:ok, value}), do: {:ok, Jason.encode!(value)}

@@ -8,7 +8,7 @@ and persists an application-specific view of the event stream via a storage modu
 
 ## Installation
 
-The package can be installed from Hex by adding `brook` to 
+The package can be installed from Hex by adding `brook` to
 your list of dependencies in `mix.exs`:
 
 ```elixir
