@@ -4,7 +4,7 @@ defmodule Brook.MixProject do
   def project do
     [
       app: :brook,
-      version: "0.4.4",
+      version: "0.4.5",
       elixir: "~> 1.8",
       description: description(),
       package: package(),
