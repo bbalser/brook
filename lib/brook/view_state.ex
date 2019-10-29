@@ -122,7 +122,7 @@ defmodule Brook.ViewState do
     assert_environment()
 
     case get(instance(), collection, key) do
-      {:ok, nil} -> default
+      {:ok, nil} -> default || function.(nil)
       {:ok, old_value} -> function.(old_value)
       {:error, reason} -> raise RuntimeError, message: inspect(reason)
     end

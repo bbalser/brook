@@ -41,6 +41,10 @@ defmodule Brook.ViewStateTest do
       merge(:data, data["id"], data)
       merge(:data, data["id"], %{second_merge: true})
     end
+
+    def handle_event(%Brook.Event{type: "function_merge", data: data}) do
+      merge(:data, data["id"], fn _old -> data end)
+    end
   end
 
   setup do
@@ -117,6 +121,14 @@ defmodule Brook.ViewStateTest do
 
       assert_async do
         assert %{"id" => 18, "name" => "Bill", second_merge: true} == Brook.get!(@instance, :data, 18)
+      end
+    end
+
+    test "data can be merged with a function and no current value" do
+      send_event("function_merge", %{"id" => 23, "name" => "Nathaniel"})
+
+      assert_async do
+        assert %{"id" => 23, "name" => "Nathaniel"} == Brook.get!(@instance, :data, 23)
       end
     end
   end
