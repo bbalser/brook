@@ -16,19 +16,23 @@ defmodule Brook.Storage.Redis.MigrationTest do
     redis_value = %{key: 1, value: view_state}
     Redix.command!(redix, ["SET", "#{@namespace}:#{@collection}:1", :erlang.term_to_binary(redis_value)])
 
-    events = [
-      Brook.Event.new(type: "type1", author: "testing", data: 1, create_ts: 0),
-      Brook.Event.new(type: "type2", author: "testing", data: 2, create_ts: 1)
-    ]
+    events =
+      1..2000
+      |> Enum.map(fn i ->
+        type = "type#{rem(i, 2)}"
+        Brook.Event.new(type: type, author: "testing", data: i, create_ts: i)
+      end)
 
     events
     |> Enum.map(&:erlang.term_to_binary(&1, compressed: 9))
     |> Enum.each(&Redix.command!(redix, ["RPUSH", "#{@namespace}:#{@collection}:1:events", &1]))
 
-    Migration.migrate(@instance, redix, @namespace) |> IO.inspect(label: "output")
+    Migration.migrate(@instance, redix, @namespace, %{"type0" => 500})
 
     assert {:ok, view_state} == Redis.get(@instance, @collection, 1)
-    assert {:ok, events} == Redis.get_events(@instance, @collection, 1)
+    {:ok, stored_events} = Redis.get_events(@instance, @collection, 1)
+    assert filter_type(events, "type0") |> Enum.drop(500) == filter_type(stored_events, "type0")
+    assert filter_type(events, "type1") == filter_type(stored_events, "type1")
 
     assert 0 == Redix.command!(redix, ["EXISTS", "#{@namespace}:#{@collection}:1"])
     assert 0 == Redix.command!(redix, ["EXISTS", "#{@namespace}:#{@collection}:1:events"])
@@ -47,7 +51,7 @@ defmodule Brook.Storage.Redis.MigrationTest do
       :erlang.term_to_binary(event, compressed: 9)
     ])
 
-    Migration.migrate(@instance, redix, @namespace)
+    Migration.migrate(@instance, redix, @namespace, %{})
 
     assert {:ok, [%Brook.Event{author: author}]} = Redis.get_events(@instance, @collection, 3)
     assert author == "migrated_default"
@@ -66,10 +70,14 @@ defmodule Brook.Storage.Redis.MigrationTest do
       :erlang.term_to_binary(event, compressed: 9)
     ])
 
-    Migration.migrate(@instance, redix, @namespace)
+    Migration.migrate(@instance, redix, @namespace, %{})
 
     assert {:ok, [%Brook.Event{create_ts: timestamp}]} = Redis.get_events(@instance, @collection, 4)
     assert timestamp == 0
+  end
+
+  defp filter_type(events, type) do
+    Enum.filter(events, fn e -> e.type == type end)
   end
 
   defp start_redis(_context) do

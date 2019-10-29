@@ -3,7 +3,7 @@ defmodule Brook.Storage.Redis.Migration do
 
   @expiration 60 * 60 * 24 * 7
 
-  def migrate(instance, redix, namespace) do
+  def migrate(instance, redix, namespace, event_limits) do
     regex = ~r/^#{namespace}:(?<collection>[[:alnum:]-_]+):(?<key>[[:alnum:]-_]+)$/
 
     view_state_entries =
@@ -11,7 +11,7 @@ defmodule Brook.Storage.Redis.Migration do
       |> Enum.filter(&Regex.match?(regex, &1))
       |> Enum.map(fn key -> Regex.named_captures(regex, key) |> Map.put("redis_key", key) end)
       |> Enum.map(&get_old_view_state(redix, &1))
-      |> Enum.map(&get_old_events(redix, &1))
+      |> Enum.map(&get_old_events(redix, event_limits, &1))
 
     Enum.each(view_state_entries, &save_view_state(instance, &1))
     Enum.each(view_state_entries, &move_old_entry(redix, &1))
@@ -24,15 +24,37 @@ defmodule Brook.Storage.Redis.Migration do
     Map.put(view_state, "value", view_entry.value)
   end
 
-  defp get_old_events(redix, view_state) do
+  defp get_old_events(redix, event_limits, view_state) do
     events_key = view_state["redis_key"] <> ":events"
 
-    old_events =
-      Redix.command!(redix, ["LRANGE", events_key, 0, -1])
-      |> Enum.map(&:erlang.binary_to_term/1)
-      |> Enum.map(&ensure_event_fields/1)
+    events_by_type =
+      Stream.iterate(0, fn x -> x + 1000 end)
+      |> Stream.map(fn start -> Redix.command!(redix, ["LRANGE", events_key, start, start + 999]) end)
+      |> Stream.take_while(fn list -> length(list) > 0 end)
+      |> Stream.map(&binary_to_term/1)
+      |> Stream.map(&ensure_event_fields/1)
+      |> Enum.reduce(%{}, fn list, acc ->
+        Enum.reduce(list, acc, fn event, acc2 ->
+          Map.update(acc2, event.type, [event], fn cur -> cur ++ [event] end)
+        end)
+        |> Enum.map(fn {type, list} ->
+          {type, ensure_event_limit(event_limits, type, list)}
+        end)
+        |> Map.new()
+      end)
 
-    Map.put(view_state, "events", old_events)
+    Map.put(view_state, "events", Map.values(events_by_type) |> List.flatten())
+  end
+
+  defp ensure_event_limit(event_limits, type, list) do
+    case Map.get(event_limits, type, :no_limit) do
+      :no_limit -> list
+      limit -> Enum.drop(list, length(list) - limit)
+    end
+  end
+
+  defp binary_to_term(list) when is_list(list) do
+    Enum.map(list, &:erlang.binary_to_term/1)
   end
 
   defp save_view_state(instance, view_state) do
@@ -51,6 +73,10 @@ defmodule Brook.Storage.Redis.Migration do
     ]
 
     Redix.pipeline!(redix, commands)
+  end
+
+  defp ensure_event_fields(list) when is_list(list) do
+    Enum.map(list, &ensure_event_fields/1)
   end
 
   defp ensure_event_fields(event) do
