@@ -57,4 +57,7 @@ defmodule Brook.Storage do
   """
   @callback get_events(Brook.instance(), Brook.view_collection(), Brook.view_key()) ::
               {:ok, list(Brook.Event.t())} | {:error, Brook.reason()}
+
+  @callback get_events(Brook.instance(), Brook.view_collection(), Brook.view_key(), Brook.event_type()) ::
+              {:ok, list(Brook.Event.t())} | {:error, Brook.reason()}
 end

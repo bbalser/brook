@@ -145,12 +145,36 @@ defmodule Brook do
   end
 
   @doc """
+  Returns a list of Brook events matching the provided type that produced the value stored under the given key
+  within a collection from the Brook view state, wrapped in an `:ok` tuple or else
+  an `:error` tuple with reason.
+  """
+  @spec get_events(instance(), view_collection(), view_key(), event_type()) ::
+          {:ok, list(Brook.Event.t())} | {:error, reason()}
+  def get_events(instance, collection, key, type) do
+    storage = Brook.Config.storage(instance)
+    apply(storage.module, :get_events, [instance, collection, key, type])
+  end
+
+  @doc """
   Returns a list of Brook events that produced the value stored under the given key
   within a collection from the Brook view state or else raises an exception.
   """
   @spec get_events!(instance(), view_collection(), view_key()) :: list(Brook.Event.t())
   def get_events!(instance, collection, key) do
     case get_events(instance, collection, key) do
+      {:ok, value} -> value
+      {:error, reason} -> raise reason
+    end
+  end
+
+  @doc """
+  Returns a list of Brook events matching the provided type that produced the value stored under the given key
+  within a collection from the Brook view state or else raises an exception.
+  """
+  @spec get_events!(instance(), view_collection(), view_key(), event_type()) :: list(Brook.Event.t())
+  def get_events!(instance, collection, key, type) do
+    case get_events(instance, collection, key, type) do
       {:ok, value} -> value
       {:error, reason} -> raise reason
     end

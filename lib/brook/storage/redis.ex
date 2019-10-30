@@ -95,9 +95,18 @@ defmodule Brook.Storage.Redis do
          compressed_events <- List.flatten(nested_events),
          serialized_events <- Enum.map(compressed_events, &:zlib.gunzip/1),
          {:ok, events} <- safe_map(serialized_events, &Brook.Deserializer.deserialize/1) do
-      events
-      |> Enum.sort_by(fn event -> event.create_ts end)
-      |> ok()
+      events |> sort_events() |> ok()
+    end
+  end
+
+  @impl Brook.Storage
+  def get_events(instance, collection, key, type) do
+    %{redix: redix, namespace: namespace} = state(instance)
+
+    with {:ok, compressed_events} <- redis_get_all(redix, events_key(namespace, collection, key, type)),
+         serialized_events <- Enum.map(compressed_events, &:zlib.gunzip/1),
+         {:ok, events} <- safe_map(serialized_events, &Brook.Deserializer.deserialize/1) do
+      events |> sort_events() |> ok()
     end
   end
 
@@ -176,5 +185,9 @@ defmodule Brook.Storage.Redis do
   defp deserialize_data(%{"key" => key, "value" => value}) do
     {:ok, deserialized_value} = Brook.Deserializer.deserialize(value)
     {key, deserialized_value}
+  end
+
+  defp sort_events(events) do
+    Enum.sort_by(events, fn event -> event.create_ts end)
   end
 end

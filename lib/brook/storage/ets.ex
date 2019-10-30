@@ -34,6 +34,11 @@ defmodule Brook.Storage.Ets do
   end
 
   @impl Brook.Storage
+  def get_events(instance, collection, key, type) do
+    GenServer.call(via(registry(instance)), {:get_events, collection, key, type})
+  end
+
+  @impl Brook.Storage
   def get_all(instance, collection) do
     GenServer.call(via(registry(instance)), {:get_all, collection})
   end
@@ -78,6 +83,14 @@ defmodule Brook.Storage.Ets do
   @impl GenServer
   def handle_call({:get_events, collection, key}, _from, state) do
     {:reply, get_existing_events(state, {collection, key}) |> ok(), state}
+  end
+
+  def handle_call({:get_events, collection, key, type}, _from, state) do
+    events =
+      get_existing_events(state, {collection, key})
+      |> Enum.filter(fn event -> event.type == type end)
+
+    {:reply, ok(events), state}
   end
 
   @impl GenServer

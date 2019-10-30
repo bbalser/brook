@@ -111,6 +111,19 @@ defmodule Brook.Storage.RedisTest do
                Redis.get_events(@instance, "people", "key1")
     end
 
+    test "returns only events matching type" do
+      event1 = Brook.Event.new(author: "steve", type: "create", data: %{"one" => 1}, create_ts: 0)
+      event2 = Brook.Event.new(author: "steve", type: "update", data: %{"one" => 1, "two" => 2}, create_ts: 1)
+      event3 = Brook.Event.new(author: "steve", type: "create", data: %{"one" => 1}, create_ts: 2)
+
+      :ok = Redis.persist(@instance, event1, "people", "key1", event1.data)
+      :ok = Redis.persist(@instance, event2, "people", "key1", event2.data)
+      :ok = Redis.persist(@instance, event3, "people", "key1", event3.data)
+
+      assert {:ok, [event1, event3]} ==
+               Redis.get_events(@instance, "people", "key1", "create")
+    end
+
     test "returns error tuple when redix returns an error" do
       allow Redix.command(any(), any()), return: {:error, :some_failure}
 
