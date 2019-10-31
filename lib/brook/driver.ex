@@ -58,7 +58,7 @@ defmodule Brook.Driver.Default do
   @impl Brook.Driver
   def send_event(instance, _type, event) do
     registry = Brook.Config.registry(instance)
-    GenServer.cast({:via, Registry, {registry, Brook.Server}}, {:process, event})
+    GenServer.call({:via, Registry, {registry, Brook.Server}}, {:process, event})
 
     :ok
   end

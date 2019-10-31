@@ -23,3 +23,5 @@ erl_crash.dump
 brook-*.tar
 
 .DS_Store
+
+.elixir_ls

@@ -24,7 +24,9 @@ defmodule Brook.Test do
   def clear_view_state(instance, collection) do
     storage = Brook.Config.storage(instance)
 
-    apply(storage.module, :get_all, [instance, collection])
+    {:ok, entries} = apply(storage.module, :get_all, [instance, collection])
+
+    entries
     |> Enum.each(fn {key, _value} ->
       apply(storage.module, :delete, [instance, collection, key])
     end)
