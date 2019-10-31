@@ -29,7 +29,7 @@ defmodule Brook.Supervisor do
       ]
       |> List.flatten()
 
-    Supervisor.init(children, strategy: :one_for_one)
+    Supervisor.init(children, strategy: :rest_for_one)
   end
 
   defp create_init_arg(instance, plugin) do
