@@ -28,7 +28,7 @@ defmodule Brook.MixProject do
     [
       {:brook_serializer, "~> 2.0"},
       {:redix, "~> 0.10.2"},
-      {:elsa, "~> 0.10"},
+      {:elsa, "~> 0.11.0"},
       {:placebo, "~> 1.2", only: [:dev, :test, :integration]},
       {:assertions, "~> 0.14.1", only: [:test, :integration]},
       {:divo, "~> 1.1", only: [:dev, :integration]},
