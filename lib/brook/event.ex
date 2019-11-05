@@ -68,15 +68,15 @@ defmodule Brook.Event do
       {:ok, serialized_event} ->
         :ok = apply(driver.module, :send_event, [instance, type, serialized_event])
 
-      {:error, reason} ->
+      {:error, reason} = error ->
         Logger.error(
           "Unable to send event: type(#{type}), author(#{author}), event(#{inspect(event)}), error reason: #{
             inspect(reason)
           }"
         )
-    end
 
-    :ok
+        error
+    end
   end
 
   @doc """
