@@ -14,7 +14,8 @@ defmodule Brook.Config do
             event_handlers: nil,
             storage: nil,
             dispatcher: nil,
-            registry: nil
+            registry: nil,
+            event_processing_timeout: nil
 
   @doc """
   Take a keyword list and extracts values necessary to configure a Brook
@@ -31,7 +32,8 @@ defmodule Brook.Config do
       event_handlers: Keyword.fetch!(opts, :handlers),
       storage: Keyword.get(opts, :storage, @default_storage) |> Enum.into(%{}),
       dispatcher: Keyword.get(opts, :dispatcher, @default_dispatcher),
-      registry: registry(instance)
+      registry: registry(instance),
+      event_processing_timeout: Keyword.get(opts, :event_processing_timeout, 5_000)
     }
   end
 
@@ -63,6 +65,10 @@ defmodule Brook.Config do
     get_value(instance, :dispatcher)
   end
 
+  def event_processing_timeout(instance) do
+    get_value(instance, :event_processing_timeout)
+  end
+
   def start_link(args) do
     GenServer.start_link(__MODULE__, args)
   end
@@ -74,6 +80,7 @@ defmodule Brook.Config do
     Registry.put_meta(config.registry, :event_handlers, config.event_handlers)
     Registry.put_meta(config.registry, :storage, config.storage)
     Registry.put_meta(config.registry, :dispatcher, config.dispatcher)
+    Registry.put_meta(config.registry, :event_processing_timeout, config.event_processing_timeout)
 
     {:ok, [], {:continue, :done}}
   end
