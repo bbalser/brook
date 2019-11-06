@@ -85,7 +85,8 @@ defmodule Brook.Event do
   @spec process(Brook.instance(), Brook.Event.t() | term()) :: :ok | {:error, Brook.reason()}
   def process(instance, event) do
     registry = Brook.Config.registry(instance)
-    GenServer.call({:via, Registry, {registry, Brook.Server}}, {:process, event})
+    timeout = Brook.Config.event_processing_timeout(instance)
+    GenServer.call({:via, Registry, {registry, Brook.Server}}, {:process, event}, timeout)
   end
 
   defp now(), do: DateTime.utc_now() |> DateTime.to_unix(:millisecond)
