@@ -11,7 +11,8 @@ defmodule Brook.MixProject do
       elixirc_paths: elixirc_paths(Mix.env()),
       test_paths: test_paths(Mix.env()),
       start_permanent: Mix.env() == :prod,
-      deps: deps()
+      deps: deps(),
+      dialyzer: [plt_file: {:no_warn, ".plt/dialyzer.plt"}]
     ]
   end
 
@@ -27,13 +28,14 @@ defmodule Brook.MixProject do
     [
       {:brook_serializer, "~> 2.0"},
       {:redix, "~> 0.10.2"},
-      {:elsa, "~> 0.10"},
+      {:elsa, "~> 0.11.0"},
       {:placebo, "~> 1.2", only: [:dev, :test, :integration]},
       {:assertions, "~> 0.14.1", only: [:test, :integration]},
       {:divo, "~> 1.1", only: [:dev, :integration]},
       {:divo_kafka, "~> 0.1.5", only: [:integration]},
       {:divo_redis, "~> 0.1.4", only: [:integration]},
-      {:ex_doc, "~> 0.20.2", only: [:dev]}
+      {:ex_doc, "~> 0.20.2", only: [:dev]},
+      {:dialyxir, "~> 1.0.0-rc.6", only: [:dev], runtime: false}
     ]
   end
 

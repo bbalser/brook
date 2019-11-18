@@ -25,3 +25,4 @@ brook-*.tar
 .DS_Store
 
 .elixir_ls
+/.plt/
