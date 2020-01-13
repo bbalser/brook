@@ -4,7 +4,7 @@ defmodule Brook.MixProject do
   def project do
     [
       app: :brook,
-      version: "0.4.9",
+      version: "0.4.10",
       elixir: "~> 1.8",
       description: description(),
       package: package(),
@@ -26,7 +26,7 @@ defmodule Brook.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:brook_serializer, "~> 2.0"},
+      {:brook_serializer, "~> 2.1"},
       {:redix, "~> 0.10.2"},
       {:elsa, "~> 0.11.0"},
       {:placebo, "~> 1.2", only: [:dev, :test, :integration]},
