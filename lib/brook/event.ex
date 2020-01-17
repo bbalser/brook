@@ -30,8 +30,14 @@ defmodule Brook.Event do
             data: nil,
             forwarded: false
 
+  def new(%{} = data) do
+    struct!(__MODULE__, Map.put_new(data, :create_ts, now()))
+  end
+
   def new(args) do
-    struct!(__MODULE__, Keyword.put_new(args, :create_ts, now()))
+    args
+    |> Map.new()
+    |> new()
   end
 
   @doc """
