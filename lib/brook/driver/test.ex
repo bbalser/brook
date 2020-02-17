@@ -1,4 +1,18 @@
 defmodule Brook.Driver.Test do
+  @moduledoc """
+  A driver for use in unit tests that will send any events sent by your application to your test process as messages in the format `{:brook_event, %Brook.Event{} = event}`
+
+  Example:
+  ```
+  instance_name = :my_instance
+  Brook.Test.register(instance_name)
+  ...
+  Brook.Test.send(instance_name, ...)
+  ...
+  assert_receive {:brook_event, %Brook.Event{...}}
+  ```
+  """
+
   @behaviour Brook.Driver
   use GenServer
   require Logger
