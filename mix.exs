@@ -27,6 +27,7 @@ defmodule Brook.MixProject do
   defp deps do
     [
       {:brook_serializer, "~> 2.2"},
+      {:json_serde, path: "../json_serde"},
       {:redix, "~> 0.10.2"},
       {:elsa, "~> 0.12.0"},
       {:placebo, "~> 1.2", only: [:dev, :test, :integration]},

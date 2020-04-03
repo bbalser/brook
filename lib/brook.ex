@@ -225,4 +225,14 @@ defmodule Brook do
       {:error, reason} -> raise reason
     end
   end
+
+  @spec serialize(term) :: {:ok, String.t()} | {:error, term}
+  def serialize(data) do
+    Brook.Serializer.serialize(data)
+  end
+
+  @spec deserialize(String.t()) :: {:ok, term} | {:error, term}
+  def deserialize(string) do
+    Brook.Deserializer.deserialize(string)
+  end
 end

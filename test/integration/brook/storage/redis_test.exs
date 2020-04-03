@@ -42,7 +42,7 @@ defmodule Brook.Storage.RedisTest do
       create_event_list =
         Redix.command!(redix, ["LRANGE", "#{@namespace}:events:people:key1:create", 0, -1])
         |> Enum.map(&:zlib.gunzip/1)
-        |> Enum.map(&Brook.Deserializer.deserialize/1)
+        |> Enum.map(&Brook.deserialize/1)
         |> Enum.map(fn {:ok, decoded_value} -> decoded_value end)
 
       assert [event1] == create_event_list
@@ -50,7 +50,7 @@ defmodule Brook.Storage.RedisTest do
       update_event_list =
         Redix.command!(redix, ["LRANGE", "#{@namespace}:events:people:key1:update", 0, -1])
         |> Enum.map(&:zlib.gunzip/1)
-        |> Enum.map(&Brook.Deserializer.deserialize/1)
+        |> Enum.map(&Brook.deserialize/1)
         |> Enum.map(fn {:ok, decoded_value} -> decoded_value end)
 
       assert [event2] == update_event_list
@@ -140,7 +140,7 @@ defmodule Brook.Storage.RedisTest do
     test "return an error when deserialize fails" do
       allow Redix.command(any(), ["KEYS" | any()]), return: {:ok, ["one", "two", "three"]}
       allow Redix.command(any(), ["LRANGE" | any()]), return: {:ok, [:zlib.gzip("one")]}
-      allow Brook.Deserializer.deserialize(any()), seq: [{:ok, :deserialized}, {:error, :deserialize_error}]
+      allow Brook.deserialize(any()), seq: [{:ok, :deserialized}, {:error, :deserialize_error}]
 
       assert {:error, :deserialize_error} == Redis.get_events(@instance, "people", "key1")
     end

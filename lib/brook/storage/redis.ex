@@ -20,10 +20,10 @@ defmodule Brook.Storage.Redis do
     %{redix: redix, namespace: namespace, event_limits: event_limits} = state(instance)
     Logger.debug(fn -> "#{__MODULE__}: persisting #{collection}:#{key}:#{inspect(value)} to redis" end)
 
-    with {:ok, serialized_event} <- Brook.Serializer.serialize(event),
+    with {:ok, serialized_event} <- Brook.serialize(event),
          gzipped_serialized_event <- :zlib.gzip(serialized_event),
          event_limit <- Map.get(event_limits, event.type, :no_limit),
-         {:ok, serialized_value} <- Brook.Serializer.serialize(value),
+         {:ok, serialized_value} <- Brook.serialize(value),
          {:ok, "OK"} <-
            redis_set(
              redix,
@@ -65,7 +65,7 @@ defmodule Brook.Storage.Redis do
         value
         |> Jason.decode!()
         |> Map.get("value")
-        |> Brook.Deserializer.deserialize()
+        |> Brook.deserialize()
 
       error_result ->
         error_result
@@ -94,7 +94,7 @@ defmodule Brook.Storage.Redis do
          {:ok, nested_events} <- safe_map(event_keys, &redis_get_all(redix, &1)),
          compressed_events <- List.flatten(nested_events),
          serialized_events <- Enum.map(compressed_events, &:zlib.gunzip/1),
-         {:ok, events} <- safe_map(serialized_events, &Brook.Deserializer.deserialize/1) do
+         {:ok, events} <- safe_map(serialized_events, &Brook.deserialize/1) do
       events |> sort_events() |> ok()
     end
   end
@@ -105,7 +105,7 @@ defmodule Brook.Storage.Redis do
 
     with {:ok, compressed_events} <- redis_get_all(redix, events_key(namespace, collection, key, type)),
          serialized_events <- Enum.map(compressed_events, &:zlib.gunzip/1),
-         {:ok, events} <- safe_map(serialized_events, &Brook.Deserializer.deserialize/1) do
+         {:ok, events} <- safe_map(serialized_events, &Brook.deserialize/1) do
       events |> sort_events() |> ok()
     end
   end
@@ -181,7 +181,7 @@ defmodule Brook.Storage.Redis do
   defp via(registry), do: {:via, Registry, {registry, __MODULE__}}
 
   defp deserialize_data(%{"key" => key, "value" => value}) do
-    {:ok, deserialized_value} = Brook.Deserializer.deserialize(value)
+    {:ok, deserialized_value} = Brook.deserialize(value)
     {key, deserialized_value}
   end
 

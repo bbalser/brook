@@ -37,7 +37,7 @@ defmodule Brook.Driver.Test do
   end
 
   def handle_call({:send, event}, _from, %{pid: pid} = state) do
-    case Brook.Deserializer.deserialize(event) do
+    case Brook.deserialize(event) do
       {:ok, brook_event} ->
         send(pid, {:brook_event, brook_event})
 

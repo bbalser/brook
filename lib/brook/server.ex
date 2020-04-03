@@ -86,7 +86,7 @@ defmodule Brook.Server do
   end
 
   defp process(event, state) do
-    case Brook.Deserializer.deserialize(event) do
+    case Brook.deserialize(event) do
       {:ok, brook_event} ->
         process(brook_event, state)
 
