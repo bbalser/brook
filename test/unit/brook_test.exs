@@ -5,6 +5,12 @@ defmodule BrookTest do
 
   @instance :brook_test
 
+  defmodule SimpleStruct do
+    use JsonSerde, alias: "simple"
+
+    defstruct [:name, :age]
+  end
+
   setup do
     {:ok, brook} =
       Brook.start_link(
@@ -116,6 +122,36 @@ defmodule BrookTest do
 
   test "unhandle event" do
     assert :discard == Test.Event.Handler.handle_event(event("DISCARD", :some_event))
+  end
+
+  describe "serialize/deserialize" do
+    test "serialized using brook serializer by default" do
+      struct = %SimpleStruct{name: "joe", age: 54}
+
+      {:ok, serialized} = Brook.serialize(struct)
+      assert {:ok, struct} == Brook.Deserializer.deserialize(serialized)
+    end
+
+    test "serialized using json_serde when configured" do
+      Application.put_env(:brook, :serializer, :json_serde)
+      on_exit(fn -> Application.delete_env(:brook, :serializer) end)
+      struct = %SimpleStruct{name: "joe", age: 54}
+
+      {:ok, serialized} = Brook.serialize(struct)
+      assert {:ok, struct} == JsonSerde.deserialize(serialized)
+    end
+
+    test "can deserialize brook serialize when in json_serde mode if backwads compatibility is enabled" do
+      Application.put_env(:brook, :serializer, :json_serde_bc)
+      on_exit(fn -> Application.delete_env(:brook, :serializer) end)
+      struct = %SimpleStruct{name: "joe", age: 54}
+
+      {:ok, serialized} = Brook.serialize(struct)
+      assert {:ok, struct} == JsonSerde.deserialize(serialized)
+
+      {:ok, brook_serialized} = Brook.Serializer.serialize(struct)
+      assert {:ok, struct} == Brook.deserialize(brook_serialized)
+    end
   end
 
   defp event(type, data, opts \\ []) do

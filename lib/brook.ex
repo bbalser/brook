@@ -228,11 +228,26 @@ defmodule Brook do
 
   @spec serialize(term) :: {:ok, String.t()} | {:error, term}
   def serialize(data) do
-    Brook.Serializer.serialize(data)
+    case Application.get_env(:brook, :serializer, :brook) do
+      :brook ->
+        Brook.Serializer.serialize(data)
+      s when s in [:json_serde, :json_serde_bc] ->
+        JsonSerde.serialize(data)
+    end
   end
 
   @spec deserialize(String.t()) :: {:ok, term} | {:error, term}
   def deserialize(string) do
-    Brook.Deserializer.deserialize(string)
+    case Application.get_env(:brook, :serializer, :brook) do
+      :brook ->
+        Brook.Deserializer.deserialize(string)
+      :json_serde ->
+        JsonSerde.deserialize(string)
+      :json_serde_bc ->
+        case String.contains?(string, "__brook_struct__") do
+          true -> Brook.Deserializer.deserialize(string)
+          false -> JsonSerde.deserialize(string)
+        end
+    end
   end
 end
