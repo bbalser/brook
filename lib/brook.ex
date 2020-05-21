@@ -231,6 +231,7 @@ defmodule Brook do
     case Application.get_env(:brook, :serializer, :brook) do
       :brook ->
         Brook.Serializer.serialize(data)
+
       s when s in [:json_serde, :json_serde_bc] ->
         JsonSerde.serialize(data)
     end
@@ -241,8 +242,10 @@ defmodule Brook do
     case Application.get_env(:brook, :serializer, :brook) do
       :brook ->
         Brook.Deserializer.deserialize(string)
+
       :json_serde ->
         JsonSerde.deserialize(string)
+
       :json_serde_bc ->
         case String.contains?(string, "__brook_struct__") do
           true -> Brook.Deserializer.deserialize(string)
