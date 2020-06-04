@@ -133,7 +133,7 @@ defmodule BrookTest do
     end
 
     test "serialized using json_serde when configured" do
-      Application.put_env(:brook, :serializer, :json_serde)
+      Application.put_env(:brook, :serializer, JsonSerde)
       on_exit(fn -> Application.delete_env(:brook, :serializer) end)
       struct = %SimpleStruct{name: "joe", age: 54}
 
@@ -142,7 +142,7 @@ defmodule BrookTest do
     end
 
     test "can deserialize brook serialize when in json_serde mode if backwads compatibility is enabled" do
-      Application.put_env(:brook, :serializer, :json_serde_bc)
+      Application.put_env(:brook, :serializer, Brook.Legacy)
       on_exit(fn -> Application.delete_env(:brook, :serializer) end)
       struct = %SimpleStruct{name: "joe", age: 54}
 
