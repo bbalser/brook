@@ -14,7 +14,7 @@ your list of dependencies in `mix.exs`:
 ```elixir
 def deps do
   [
-    {:brook, "~> 0.5"}
+    {:brook, "~> 0.6"}
   ]
 end
 ```
